@@ -61,4 +61,5 @@ panel_icon: mdi:text-to-speech
 panel_title: Pocket TTS
 
 # Documentation
-image: ghcr.io/araa47/wyoming-pocket-tts-{arch}
+# Note: Remove or comment out 'image' line for local add-on builds
+# image: ghcr.io/araa47/wyoming-pocket-tts-{arch}
