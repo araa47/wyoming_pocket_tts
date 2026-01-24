@@ -13,7 +13,9 @@ A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS]
 ## Requirements
 
 - Home Assistant with Wyoming integration
-- HuggingFace account (free) - [accept model terms](https://huggingface.co/kyutai/pocket-tts)
+- **For voice cloning only**: HuggingFace account (free) with [accepted model terms](https://huggingface.co/kyutai/pocket-tts)
+
+> **Note**: Built-in voices (alba, marius, etc.) work without any HuggingFace setup. You only need an HF token if you want to clone custom voices.
 
 ## Installation
 
@@ -32,8 +34,8 @@ A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS]
 
 3. **Configure the add-on:**
    - Go to the **Configuration** tab
-   - Set `hf_token`: Your HuggingFace token ([get one here](https://huggingface.co/settings/tokens))
    - Optionally change `voice` (default: "alba")
+   - **(Voice cloning only)** Set `hf_token`: Your HuggingFace token ([get one here](https://huggingface.co/settings/tokens))
    - Click **Save**
 
 4. **Start the add-on:**
@@ -89,8 +91,10 @@ docker build -t wyoming-pocket-tts .
 docker run -d \
   -p 10200:10200 \
   -v /path/to/voices:/share/tts-voices \
-  -e HF_TOKEN=your_token_here \
   wyoming-pocket-tts
+
+# For voice cloning, add your HuggingFace token:
+# -e HF_TOKEN=your_token_here
 ```
 
 ### Option 4: Local Development
@@ -102,6 +106,13 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
 ```
 
 ## Adding Custom Voices (Voice Cloning)
+
+> **Requirements for voice cloning:**
+> 1. Create a free [HuggingFace account](https://huggingface.co/join)
+> 2. [Accept the Kokoro model terms](https://huggingface.co/hexgrad/Kokoro-82M) (required for voice cloning feature)
+> 3. [Get your HF token](https://huggingface.co/settings/tokens) and add it to the add-on config
+>
+> These steps are **only needed for voice cloning** - built-in voices work without any HuggingFace setup.
 
 1. Record 15-30 seconds of clear speech (WAV, MP3, or OGG)
 
@@ -145,7 +156,7 @@ For best voice cloning results:
 | `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
 | `preload_voices` | `false` | Load all preset voices at startup |
 | `debug` | `false` | Enable debug logging |
-| `hf_token` | (required) | HuggingFace API token |
+| `hf_token` | (optional) | HuggingFace API token (only required for voice cloning) |
 
 ## Preset Voices
 
@@ -179,12 +190,14 @@ echo '{"type":"synthesize","data":{"text":"Hello world","voice":{"name":"alba"}}
 
 ## Troubleshooting
 
-### "Gated model" error
-You need to accept the model terms:
-1. Go to https://huggingface.co/kyutai/pocket-tts
-2. Log in and accept the terms
+### "Gated model" error (voice cloning only)
+This error only occurs when using voice cloning. Built-in voices don't require HuggingFace access.
+
+To fix for voice cloning:
+1. Go to https://huggingface.co/hexgrad/Kokoro-82M
+2. Log in and accept the model terms
 3. Get your token from https://huggingface.co/settings/tokens
-4. Add it to the add-on config
+4. Add it to the add-on config as `hf_token`
 
 ### Voice not found
 - Check the filename matches (without extension)
