@@ -121,9 +121,17 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
    cp my_voice.wav /share/tts-voices/
    ```
 
-3. Restart the add-on (or it will auto-detect on next request)
+3. Restart the add-on to load the new voice
 
-4. Use the voice by name (filename without extension):
+4. **Reload the Wyoming integration in Home Assistant** (required for new voices to appear):
+   - Go to **Settings → Devices & Services**
+   - Find the **Wyoming Protocol** integration
+   - Click on your **Pocket TTS** device
+   - Click the **⋮** menu → **Reload**
+   
+   > **Note**: Home Assistant caches the voice list. Without this reload step, your new voice won't appear in the voice dropdown when configuring assistants.
+
+5. Use the voice by name (filename without extension):
    ```yaml
    service: tts.speak
    data:
@@ -198,6 +206,14 @@ To fix for voice cloning:
 2. Log in and accept the model terms
 3. Get your token from https://huggingface.co/settings/tokens
 4. Add it to the add-on config as `hf_token`
+
+### Custom voice not appearing in Home Assistant
+Home Assistant caches the voice list from Wyoming providers. After adding a new voice:
+1. Restart the Pocket TTS add-on
+2. Go to **Settings → Devices & Services → Wyoming Protocol**
+3. Click on your Pocket TTS device → **⋮** menu → **Reload**
+
+The new voice should now appear in the voice dropdown.
 
 ### Voice not found
 - Check the filename matches (without extension)

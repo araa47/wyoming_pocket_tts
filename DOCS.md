@@ -69,7 +69,14 @@ Clone any voice from a short audio sample:
 1. Record 15-30 seconds of clear speech (WAV, MP3, or OGG)
 2. Upload to `/share/tts-voices/` via Samba/SSH
 3. Name the file (e.g., `my_voice.wav`)
-4. Use `my_voice` as the voice name in automations
+4. Restart the add-on to load the new voice
+5. **Reload the Wyoming integration** to update the voice list:
+   - Go to **Settings → Devices & Services**
+   - Click on your **Pocket TTS** device under Wyoming Protocol
+   - Click **⋮** menu → **Reload**
+6. Use `my_voice` as the voice name in automations
+
+> **Important**: Home Assistant caches the voice list. Without step 5, your new voice won't appear in the voice dropdown when configuring assistants.
 
 ### Recording Tips
 
@@ -113,6 +120,14 @@ data:
 ### Slow first response
 
 The model loads on first request (~2-3 seconds). Enable `preload_voices` for instant responses.
+
+### Custom voice not appearing in dropdown
+
+Home Assistant caches the voice list. After adding a new voice:
+
+1. Restart the Pocket TTS add-on
+2. Go to **Settings → Devices & Services → Wyoming Protocol**
+3. Click on your Pocket TTS device → **⋮** menu → **Reload**
 
 ### Custom voice not found
 
