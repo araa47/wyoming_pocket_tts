@@ -14,6 +14,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libportaudio2 \
     portaudio19-dev \
+    libsndfile1 \
     netcat-openbsd \
     jq \
     curl \
