@@ -2,7 +2,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration
 
 name: Wyoming Pocket TTS
-version: "1.0.0"
+version: "1.0.1"
 slug: wyoming_pocket_tts
 description: >-
   Fast, local text-to-speech with voice cloning using Kyutai Pocket TTS.
@@ -12,7 +12,6 @@ url: https://github.com/araa47/wyoming-pocket-tts
 arch:
   - amd64
   - aarch64
-  - armv7
 
 # Startup configuration
 init: false

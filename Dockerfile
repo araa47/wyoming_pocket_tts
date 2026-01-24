@@ -1,33 +1,39 @@
-# Wyoming-Kyutai TTS Docker image
-# Supports: amd64, aarch64, armv7
+# Wyoming Pocket TTS Docker image
+# Supports: amd64, aarch64
+# Uses Debian for glibc compatibility (required for PyTorch wheels)
 
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.20
+# For standalone use, can override with: ghcr.io/astral-sh/uv:python3.13-bookworm
+ARG BUILD_FROM=ghcr.io/astral-sh/uv:python3.13-bookworm
+
 FROM ${BUILD_FROM}
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install system dependencies and uv
-RUN apk add --no-cache \
-    build-base \
-    git \
-    libffi-dev \
-    portaudio-dev \
-    curl
-
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install system dependencies for audio
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libportaudio2 \
+    portaudio19-dev \
+    netcat-openbsd \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml .
-COPY wyoming_kyutai/ wyoming_kyutai/
+# Use system Python environment
+ENV UV_SYSTEM_PYTHON=1
+ENV UV_LINK_MODE=copy
 
-# Install dependencies with uv
-RUN uv pip install --system .
+# Copy project files and install dependencies (with cache mount for speed)
+COPY pyproject.toml .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r pyproject.toml
+
+# Copy project source and install
+COPY wyoming_pocket_tts/ wyoming_pocket_tts/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-deps .
 
 # Copy run script
 COPY run.sh /
@@ -41,7 +47,7 @@ EXPOSE 10200
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD echo '{"type":"describe"}' | nc -w 5 localhost 10200 | grep -q "kyutai" || exit 1
+    CMD echo '{"type":"describe"}' | nc -w 5 localhost 10200 | grep -q "pocket-tts" || exit 1
 
 # Run the server
 CMD ["/run.sh"]
