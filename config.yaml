@@ -1,0 +1,65 @@
+# Home Assistant Add-on Configuration
+# https://developers.home-assistant.io/docs/add-ons/configuration
+
+name: Wyoming Pocket TTS
+version: "1.0.0"
+slug: wyoming_pocket_tts
+description: >-
+  Fast, local text-to-speech with voice cloning using Kyutai Pocket TTS.
+  Runs on CPU at ~10x realtime speed. Supports custom voice cloning from
+  short audio samples (15-30 seconds recommended).
+url: https://github.com/araa47/wyoming-pocket-tts
+arch:
+  - amd64
+  - aarch64
+  - armv7
+
+# Startup configuration
+init: false
+startup: application
+boot: auto
+
+# Auto-discovery via Wyoming protocol
+discovery:
+  - wyoming
+
+# Network
+ports:
+  "10200/tcp": null
+ports_description:
+  10200/tcp: Wyoming protocol
+
+# Host access
+host_network: false
+hassio_api: false
+homeassistant_api: false
+
+# Storage
+map:
+  - share:rw  # For custom voice samples in /share/tts-voices
+
+# Configuration options exposed in UI
+options:
+  voice: alba
+  voices_dir: /share/tts-voices
+  preload_voices: false
+  debug: false
+  hf_token: ""
+
+schema:
+  voice: str
+  voices_dir: str
+  preload_voices: bool
+  debug: bool
+  hf_token: password
+
+# Environment
+environment:
+  HF_TOKEN: "{{ .hf_token }}"
+
+# Panel
+panel_icon: mdi:text-to-speech
+panel_title: Pocket TTS
+
+# Documentation
+image: ghcr.io/araa47/wyoming-pocket-tts-{arch}
