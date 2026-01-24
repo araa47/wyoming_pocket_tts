@@ -64,9 +64,5 @@ echo "Preload voices: $PRELOAD_VOICES"
 echo "Debug: $DEBUG"
 echo "========================================"
 
-# Run the server (use uv if available, fallback to python3)
-if command -v uv &> /dev/null; then
-    exec uv run python -m wyoming_pocket_tts "${ARGS[@]}"
-else
-    exec python3 -m wyoming_pocket_tts "${ARGS[@]}"
-fi
+# Run the server (packages installed to system Python)
+exec python3 -m wyoming_pocket_tts "${ARGS[@]}"

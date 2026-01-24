@@ -22,7 +22,7 @@ A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS]
 1. **Add the repository to Home Assistant:**
    - Go to **Settings → Add-ons → Add-on Store**
    - Click the **⋮** menu (top right) → **Repositories**
-   - Add: `https://github.com/araa47/wyoming-pocket-tts`
+   - Add: `https://github.com/araa47/wyoming_pocket_tts`
    - Click **Add** → **Close**
 
 2. **Install the add-on:**

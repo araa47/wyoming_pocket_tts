@@ -126,26 +126,33 @@ def get_wyoming_info(voices: list[str]) -> Info:
     """Create Wyoming info describing available TTS voices."""
     tts_voices = []
 
+    kyutai_attribution = Attribution(
+        name="Kyutai",
+        url="https://kyutai.org/",
+    )
+
     for voice in voices:
         tts_voices.append(
             TtsVoice(
                 name=voice,
-                description=f"Pocket TTS voice: {voice}",
-                languages=["en"],  # Pocket TTS is English-only
+                attribution=kyutai_attribution,
                 installed=True,
+                description=f"Pocket TTS voice: {voice}",
+                version=None,
+                languages=["en"],  # Pocket TTS is English-only
             )
         )
+
+    from . import __version__
 
     return Info(
         tts=[
             TtsProgram(
                 name="pocket-tts",
-                description="Pocket TTS - Fast CPU-based TTS with voice cloning",
-                attribution=Attribution(
-                    name="Kyutai",
-                    url="https://kyutai.org/",
-                ),
+                attribution=kyutai_attribution,
                 installed=True,
+                description="Pocket TTS - Fast CPU-based TTS with voice cloning",
+                version=__version__,
                 voices=tts_voices,
             )
         ]
