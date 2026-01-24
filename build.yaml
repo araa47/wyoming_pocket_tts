@@ -1,0 +1,9 @@
+# Home Assistant Add-on Build Configuration
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-build-options
+
+build_from:
+  amd64: ghcr.io/astral-sh/uv:python3.13-bookworm
+  aarch64: ghcr.io/astral-sh/uv:python3.13-bookworm
+
+args:
+  BUILD_FROM: ghcr.io/astral-sh/uv:python3.13-bookworm
