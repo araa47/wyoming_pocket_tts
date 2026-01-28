@@ -13,7 +13,7 @@ A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS]
 ## Requirements
 
 - Home Assistant with Wyoming integration
-- **Disk space**: ~2-3GB (includes TTS model download of ~500MB)
+- **Disk space**: ~1.5-2GB (optimized Docker image ~270MB + TTS model ~500MB at runtime)
 - **For voice cloning only**: HuggingFace account (free) with [accepted model terms](https://huggingface.co/kyutai/pocket-tts)
 
 > **Note**: Built-in voices (alba, marius, etc.) work without any HuggingFace setup. You only need an HF token if you want to clone custom voices.

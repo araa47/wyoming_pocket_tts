@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-01-29
+
+### Changed
+- **Docker image reduced by 56%** (613MB → 269MB compressed) using multi-stage builds and UV best practices
+- Switched to `bookworm-slim` base images for smaller footprint
+- Added bytecode compilation (`UV_COMPILE_BYTECODE=1`) for faster container startup
+- Removed unnecessary files from final image (test dirs, header files, unused Caffe2)
+- UV is no longer included in the final runtime image (only used during build)
+
+### Technical Details
+- Builder stage: `ghcr.io/astral-sh/uv:python3.13-bookworm-slim`
+- Runtime stage: `python:3.13-slim-bookworm`
+- Uncompressed size reduced from 2.63GB to 1.25GB
+
 ## [1.0.3] - 2026-01-29
 
 ### Changed
