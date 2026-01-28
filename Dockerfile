@@ -28,8 +28,10 @@ ENV UV_SYSTEM_PYTHON=1
 ENV UV_LINK_MODE=copy
 
 # Copy project files and install dependencies (with cache mount for speed)
+# Install CPU-only PyTorch first to avoid downloading CUDA dependencies (~15GB -> ~2GB)
 COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install torch --index-url https://download.pytorch.org/whl/cpu && \
     uv pip install -r pyproject.toml
 
 # Copy project source and install

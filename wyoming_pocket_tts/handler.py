@@ -37,19 +37,10 @@ class PocketTTSEventHandler(AsyncEventHandler):
 
     def _load_preset_voice(self, voice_name: str):
         """Load a preset voice on-demand."""
-        voice_urls = {
-            "alba": "hf://kyutai/tts-voices/alba-mackenna/casual.wav",
-            "marius": "hf://kyutai/tts-voices/voice-donations/Selfie.wav",
-            "javert": "hf://kyutai/tts-voices/voice-donations/Butter.wav",
-            "jean": "hf://kyutai/tts-voices/ears/p010/freeform_speech_01.wav",
-            "fantine": "hf://kyutai/tts-voices/vctk/p244_023.wav",
-            "cosette": "hf://kyutai/tts-voices/expresso/ex04-ex02_confused_001_channel1_499s.wav",
-            "eponine": "hf://kyutai/tts-voices/vctk/p262_023.wav",
-            "azelma": "hf://kyutai/tts-voices/vctk/p303_023.wav",
-        }
-        if voice_name in voice_urls:
+        if voice_name in PRESET_VOICES:
             try:
-                return self.model.get_state_for_audio_prompt(voice_urls[voice_name])
+                # Use preset voice name directly (no HF auth required)
+                return self.model.get_state_for_audio_prompt(voice_name)
             except Exception as e:
                 _LOGGER.error("Failed to load voice %s: %s", voice_name, e)
         return None

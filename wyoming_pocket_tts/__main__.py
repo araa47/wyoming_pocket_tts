@@ -92,38 +92,8 @@ async def main() -> None:
         for voice in PRESET_VOICES:
             if voice not in voice_states:
                 try:
-                    if voice == "alba":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/alba-mackenna/casual.wav"
-                        )
-                    elif voice == "marius":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/voice-donations/Selfie.wav"
-                        )
-                    elif voice == "javert":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/voice-donations/Butter.wav"
-                        )
-                    elif voice == "jean":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/ears/p010/freeform_speech_01.wav"
-                        )
-                    elif voice == "fantine":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/vctk/p244_023.wav"
-                        )
-                    elif voice == "cosette":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/expresso/ex04-ex02_confused_001_channel1_499s.wav"
-                        )
-                    elif voice == "eponine":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/vctk/p262_023.wav"
-                        )
-                    elif voice == "azelma":
-                        voice_states[voice] = model.get_state_for_audio_prompt(
-                            "hf://kyutai/tts-voices/vctk/p303_023.wav"
-                        )
+                    # Use preset voice name directly (no HF auth required)
+                    voice_states[voice] = model.get_state_for_audio_prompt(voice)
                     _LOGGER.info("Preloaded voice: %s", voice)
                 except Exception as e:
                     _LOGGER.warning("Failed to preload voice %s: %s", voice, e)
@@ -131,10 +101,9 @@ async def main() -> None:
     # Load default voice if not already loaded
     if args.voice not in voice_states:
         _LOGGER.info("Loading default voice: %s", args.voice)
-        if args.voice == "alba":
-            voice_states[args.voice] = model.get_state_for_audio_prompt(
-                "hf://kyutai/tts-voices/alba-mackenna/casual.wav"
-            )
+        if args.voice in PRESET_VOICES:
+            # Use preset voice name directly (no HF auth required)
+            voice_states[args.voice] = model.get_state_for_audio_prompt(args.voice)
         else:
             # Assume it's a preset voice
             _LOGGER.warning("Default voice %s not found, will load on first request", args.voice)
