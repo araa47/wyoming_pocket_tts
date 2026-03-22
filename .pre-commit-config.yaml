@@ -1,0 +1,64 @@
+---
+default_language_version:
+    python: python3
+default_stages: [pre-commit, pre-push]
+repos:
+    - repo: https://github.com/astral-sh/uv-pre-commit
+      # uv version.
+      rev: 0.10.7
+      hooks:
+          - id: uv-lock
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v6.0.0
+      hooks:
+          - id: check-executables-have-shebangs
+          - id: check-added-large-files
+          - id: check-docstring-first
+          - id: check-merge-conflict
+          - id: debug-statements
+          - id: end-of-file-fixer
+          - id: mixed-line-ending
+          - id: trailing-whitespace
+    - repo: https://github.com/adrienverge/yamllint.git
+      rev: v1.38.0
+      hooks:
+          - id: yamllint
+            args: [--format, parsable]
+
+    - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+      rev: 0.2.3
+      hooks:
+          - id: yamlfmt
+    - repo: https://github.com/psf/black
+      rev: 26.1.0
+      hooks:
+          - id: black
+            language_version: python3
+            args: [-t, py311]
+    - repo: https://github.com/pycqa/isort
+      rev: 8.0.1
+      hooks:
+          - id: isort
+            name: isort (python)
+    - repo: local
+      hooks:
+          - id: ty
+            name: ty
+            entry: uv run ty check
+            language: system
+            types: [python]
+    - repo: https://github.com/codespell-project/codespell
+      rev: v2.4.1
+      hooks:
+          - id: codespell
+            name: codespell
+            description: Checks for common misspellings in text files.
+            entry: codespell --ignore-words ignore-spelling-words.txt
+            language: python
+            types: [text]
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.15.4
+      hooks:
+          - id: ruff
+            args: [--fix, --exit-non-zero-on-fix]

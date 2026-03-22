@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# IDE / Editor
+.cursor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+.env
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
+
+# Dev tooling
+.pre-commit-config.yaml
+.yamllint
+.envrc
+.python-version
+ignore-spelling-words.txt
+tests/
+
+# Docs
+AGENTS.md
+CLAUDE.md
+CONTRIBUTING.md
+CHANGELOG.md
+DOCS.md
+README.md
+LICENSE
+
+# Images (not needed at runtime)
+*.png
+logo.png
+icon.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.direnv
+test-voices/
+PocketTTS.ogg
+voice_samples/
