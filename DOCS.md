@@ -54,7 +54,7 @@ In the add-on Configuration tab:
    - Click **Add Integration** → **Wyoming Protocol**
    - Host: Find the hostname in the add-on's **Info** tab (looks like `xxxxxxxx-wyoming-pocket-tts`)
    - Port: `10200`
-   
+
    **Note**: First startup may take 3-5 minutes to download the TTS model (~500MB).
 
 4. **Set up Voice Assistant**:

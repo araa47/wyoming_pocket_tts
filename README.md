@@ -45,19 +45,19 @@ A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS]
    - Enable **Start on boot** if desired
 
 5. **Connect to Home Assistant (Auto-Discovery):**
-   
+
    The add-on should be **auto-discovered** by Home Assistant:
    - Go to **Settings → Devices & Services**
    - Look for **"Discovered"** section - you should see **Wyoming Pocket TTS**
    - Click **Configure** to add it
-   
+
    **If not auto-discovered** (manual setup):
    - Click **Add Integration** → search for **Wyoming Protocol**
    - Enter:
      - Host: Find the hostname in the add-on's **Info** tab under "Hostname"
        (typically looks like `xxxxxxxx-wyoming-pocket-tts` where `xxxxxxxx` is a hash)
      - Port: `10200`
-   
+
    **Note**: First startup may take 3-5 minutes to download the TTS model (~500MB).
 
 6. **Set up Voice Assistant:**
@@ -129,7 +129,7 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
    - Find the **Wyoming Protocol** integration
    - Click on your **Pocket TTS** device
    - Click the **⋮** menu → **Reload**
-   
+
    > **Note**: Home Assistant caches the voice list. Without this reload step, your new voice won't appear in the voice dropdown when configuring assistants.
 
 5. Use the voice by name (filename without extension):

@@ -1,8 +1,9 @@
+---
 # Home Assistant Add-on Build Configuration
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-build-options
 
 # Multi-stage build: builder uses uv:python3.13-bookworm-slim
 # Final stage uses python:3.13-slim-bookworm for minimal size
 build_from:
-  amd64: python:3.13-slim-bookworm
-  aarch64: python:3.13-slim-bookworm
+    amd64: python:3.13-slim-bookworm
+    aarch64: python:3.13-slim-bookworm

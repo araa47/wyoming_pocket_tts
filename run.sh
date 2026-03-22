@@ -70,7 +70,7 @@ send_discovery() {
     local max_wait=300
     local waited=0
     echo "Waiting for Wyoming server to be ready for discovery..."
-    
+
     while [ $waited -lt $max_wait ]; do
         if echo '{"type":"describe"}' | nc -w 2 localhost 10200 2>/dev/null | grep -q "pocket-tts"; then
             echo "Server is ready after ${waited}s"
@@ -95,7 +95,7 @@ send_discovery() {
         # Home Assistant uses {REPO}_{SLUG} but DNS requires hyphens
         hostname=$(hostname | tr '_' '-')
         echo "Sending discovery for host: ${hostname}:10200"
-        
+
         # Retry discovery up to 3 times
         local retry=0
         local max_retries=3
@@ -106,7 +106,7 @@ send_discovery() {
                 -H "Content-Type: application/json" \
                 -d "{\"service\": \"wyoming\", \"config\": {\"uri\": \"tcp://${hostname}:10200\"}}" \
                 "http://supervisor/discovery" 2>&1)
-            
+
             if echo "$response" | grep -q '"result".*"ok"'; then
                 echo "Successfully sent discovery information to Home Assistant"
                 return 0
