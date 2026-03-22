@@ -38,17 +38,28 @@ COPY wyoming_pocket_tts/ wyoming_pocket_tts/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps .
 
-# Clean up unnecessary files from site-packages to reduce image size
-RUN find /usr/local/lib/python3.13/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type d -name "test" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type d -name "__pycache__" -name "*.py" -delete 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type f -name "*.pyi" -delete 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type f -name "*.pyx" -delete 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type f -name "*.c" -delete 2>/dev/null || true && \
-    find /usr/local/lib/python3.13/site-packages -type f -name "*.h" -delete 2>/dev/null || true && \
-    rm -rf /usr/local/lib/python3.13/site-packages/torch/include 2>/dev/null || true && \
-    rm -rf /usr/local/lib/python3.13/site-packages/torch/share 2>/dev/null || true && \
-    rm -rf /usr/local/lib/python3.13/site-packages/caffe2 2>/dev/null || true
+# Clean up: remove unneeded runtime packages and files in a single layer
+# Verified: pocket_tts loads fine without sympy, networkx, pygments, pip, setuptools
+RUN rm -rf /usr/local/lib/python3.13/site-packages/sympy \
+           /usr/local/lib/python3.13/site-packages/sympy-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/networkx \
+           /usr/local/lib/python3.13/site-packages/networkx-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/pygments \
+           /usr/local/lib/python3.13/site-packages/Pygments-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/pip \
+           /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/setuptools \
+           /usr/local/lib/python3.13/site-packages/setuptools-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/torch/include \
+           /usr/local/lib/python3.13/site-packages/torch/share \
+           /usr/local/lib/python3.13/site-packages/torch/_inductor \
+           /usr/local/lib/python3.13/site-packages/caffe2 \
+    && find /usr/local/lib/python3.13/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type d -name "test" -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.pyi" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.pyx" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.c" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.h" -delete 2>/dev/null || true
 
 # ============================================
 # RUNTIME STAGE - Minimal final image

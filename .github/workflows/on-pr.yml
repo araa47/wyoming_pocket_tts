@@ -1,0 +1,21 @@
+---
+name: On PR
+
+on:
+    pull_request:
+        branches: [main]
+        types:
+            - opened
+            - reopened
+            - synchronize
+            - ready_for_review
+
+jobs:
+    prek:
+        uses: ./.github/workflows/job-prek.yml
+
+    test:
+        uses: ./.github/workflows/job-test.yml
+        permissions:
+            contents: read
+            id-token: write

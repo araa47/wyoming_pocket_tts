@@ -1,29 +1,113 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-*.egg
-dist/
-build/
 
-# Virtual environments
-.venv/
+# C extensions
+*.so
+
+# Distribution / packaging
+.direnv
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.DS_Store
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Environments
+.env
+.venv
+env/
 venv/
 ENV/
-.env
-# uv
-uv.lock
+env.bak/
+venv.bak/
 
-# IDE
-.idea/
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# IDEs
+.cursor
+.devcontainer
+.idea
 .vscode/
+*.iml
 *.swp
 *.swo
 
 # OS
-.DS_Store
 Thumbs.db
 
-# Local development
+# Logs
 *.log
+
+# UV
+uv.lock
+
+# Misc
+.mutmut-cache
+profile.html
+profile.json
+data

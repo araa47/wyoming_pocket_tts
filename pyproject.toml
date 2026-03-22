@@ -1,6 +1,6 @@
 [project]
 name = "wyoming-pocket-tts"
-version = "1.0.4"
+version = "1.0.5"
 description = "Wyoming protocol server for Kyutai Pocket TTS with voice cloning"
 readme = "README.md"
 license = "MIT"
@@ -27,6 +27,16 @@ dependencies = [
     "soundfile>=0.12.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.15.4",
+    "prek>=0.3.4",
+    "pytest",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov",
+    "ty>=0.0.19",
+]
+
 [project.scripts]
 wyoming-pocket-tts = "wyoming_pocket_tts.__main__:run"
 
@@ -36,3 +46,20 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["wyoming_pocket_tts*"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.isort]
+profile = "black"
+src_paths = "tests"
+line_length = 80
+include_trailing_comma = true
+multi_line_output = 3
+
+[tool.ruff]
+select = ["E", "F", "B"]
+exclude = ["__pycache__", ".git", ".venv"]
+ignore = ["E501"]

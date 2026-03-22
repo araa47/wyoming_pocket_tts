@@ -84,7 +84,9 @@ async def main() -> None:
 
     # Load custom voices from directory
     voice_states = load_custom_voices(args.voices_dir, model)
-    _LOGGER.info("Loaded %d custom voice(s) from %s", len(voice_states), args.voices_dir)
+    _LOGGER.info(
+        "Loaded %d custom voice(s) from %s", len(voice_states), args.voices_dir
+    )
 
     # Optionally preload preset voices
     if args.preload_voices:
@@ -93,7 +95,7 @@ async def main() -> None:
             if voice not in voice_states:
                 try:
                     # Use preset voice name directly (no HF auth required)
-                    voice_states[voice] = model.get_state_for_audio_prompt(voice)
+                    voice_states[voice] = model.get_state_for_audio_prompt(voice)  # type: ignore[arg-type]
                     _LOGGER.info("Preloaded voice: %s", voice)
                 except Exception as e:
                     _LOGGER.warning("Failed to preload voice %s: %s", voice, e)
@@ -103,10 +105,12 @@ async def main() -> None:
         _LOGGER.info("Loading default voice: %s", args.voice)
         if args.voice in PRESET_VOICES:
             # Use preset voice name directly (no HF auth required)
-            voice_states[args.voice] = model.get_state_for_audio_prompt(args.voice)
+            voice_states[args.voice] = model.get_state_for_audio_prompt(args.voice)  # type: ignore[arg-type]
         else:
             # Assume it's a preset voice
-            _LOGGER.warning("Default voice %s not found, will load on first request", args.voice)
+            _LOGGER.warning(
+                "Default voice %s not found, will load on first request", args.voice
+            )
 
     # Build list of available voices
     available_voices = list(set(PRESET_VOICES + list(voice_states.keys())))
