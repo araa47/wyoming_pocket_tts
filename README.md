@@ -1,138 +1,111 @@
-# Wyoming Pocket TTS
+<p align="center">
+  <img src="logo.png" alt="Wyoming Pocket TTS" width="400">
+</p>
 
-A [Wyoming protocol](https://github.com/rhasspy/wyoming) server for [Pocket TTS](https://kyutai.org/tts) - fast, local text-to-speech with voice cloning support.
+<p align="center">
+  <strong>Fast, local text-to-speech with voice cloning for Home Assistant</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/araa47/wyoming_pocket_tts/actions/workflows/on-merge.yml"><img src="https://github.com/araa47/wyoming_pocket_tts/actions/workflows/on-merge.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/araa47/wyoming_pocket_tts/pkgs/container/wyoming_pocket_tts"><img src="https://img.shields.io/badge/ghcr.io-wyoming__pocket__tts-blue?logo=docker" alt="Docker"></a>
+  <a href="https://github.com/araa47/wyoming_pocket_tts/blob/main/LICENSE"><img src="https://img.shields.io/github/license/araa47/wyoming_pocket_tts" alt="License"></a>
+  <a href="https://github.com/araa47/wyoming_pocket_tts/releases"><img src="https://img.shields.io/github/v/release/araa47/wyoming_pocket_tts?include_prereleases&label=version" alt="Version"></a>
+</p>
+
+<p align="center">
+  A <a href="https://github.com/rhasspy/wyoming">Wyoming protocol</a> server for <a href="https://kyutai.org/tts">Kyutai Pocket TTS</a> — ~10x realtime on CPU, no cloud, no GPU.
+</p>
+
+---
 
 ## Features
 
-- **Fast**: ~10x realtime on CPU (no GPU required)
-- **Voice Cloning**: Clone any voice from 15-30 seconds of audio
-- **Local**: 100% on-device, no cloud required
-- **Wyoming Compatible**: Works with Home Assistant voice pipelines
-- **8 Preset Voices**: alba, marius, javert, jean, fantine, cosette, eponine, azelma
+- **Fast** — ~10x realtime on CPU, no GPU required
+- **Voice Cloning** — clone any voice from 15-30 seconds of audio
+- **Local** — 100% on-device, no cloud dependency
+- **Wyoming Compatible** — plug into Home Assistant voice pipelines
+- **8 Preset Voices** — alba, marius, javert, jean, fantine, cosette, eponine, azelma
 
-## Requirements
+## Quick Start
 
-- Home Assistant with Wyoming integration
-- **Disk space**: ~1.5-2GB (optimized Docker image ~270MB + TTS model ~500MB at runtime)
-- **For voice cloning only**: HuggingFace account (free) with [accepted model terms](https://huggingface.co/kyutai/pocket-tts)
-
-> **Note**: Built-in voices (alba, marius, etc.) work without any HuggingFace setup. You only need an HF token if you want to clone custom voices.
-
-## Installation
-
-### Option 1: Home Assistant Add-on Repository (Recommended)
-
-1. **Add the repository to Home Assistant:**
-   - Go to **Settings → Add-ons → Add-on Store**
-   - Click the **⋮** menu (top right) → **Repositories**
-   - Add: `https://github.com/araa47/wyoming_pocket_tts`
-   - Click **Add** → **Close**
-
-2. **Install the add-on:**
-   - Refresh the page (or click **Check for updates**)
-   - Find **"Wyoming Pocket TTS"** in the add-on store
-   - Click **Install**
-
-3. **Configure the add-on:**
-   - Go to the **Configuration** tab
-   - Optionally change `voice` (default: "alba")
-   - **(Voice cloning only)** Set `hf_token`: Your HuggingFace token ([get one here](https://huggingface.co/settings/tokens))
-   - Click **Save**
-
-4. **Start the add-on:**
-   - Go to the **Info** tab
-   - Click **Start**
-   - Enable **Start on boot** if desired
-
-5. **Connect to Home Assistant (Auto-Discovery):**
-
-   The add-on should be **auto-discovered** by Home Assistant:
-   - Go to **Settings → Devices & Services**
-   - Look for **"Discovered"** section - you should see **Wyoming Pocket TTS**
-   - Click **Configure** to add it
-
-   **If not auto-discovered** (manual setup):
-   - Click **Add Integration** → search for **Wyoming Protocol**
-   - Enter:
-     - Host: Find the hostname in the add-on's **Info** tab under "Hostname"
-       (typically looks like `xxxxxxxx-wyoming-pocket-tts` where `xxxxxxxx` is a hash)
-     - Port: `10200`
-
-   **Note**: First startup may take 3-5 minutes to download the TTS model (~500MB).
-
-6. **Set up Voice Assistant:**
-   - Go to **Settings → Voice Assistants**
-   - Edit your assistant (or create one)
-   - Set **Text-to-speech** to **Wyoming Pocket TTS** (the device you just added)
-
-### Option 2: Local Add-on (Manual)
-
-If the repository isn't published yet, copy files manually:
-
-1. Copy `wyoming_pocket_tts/` folder to `/config/addons_local/wyoming_pocket_tts/`
-   ```bash
-   # From your Home Assistant terminal/SSH
-   mkdir -p /config/addons_local
-   # Then copy/upload the wyoming_pocket_tts folder there
-   ```
-
-2. Go to **Settings → Add-ons → Add-on Store**
-
-3. Click **⋮** menu → **Check for updates**
-
-4. Find **"Wyoming Pocket TTS"** under **Local add-ons**
-
-5. Follow steps 3-6 from Option 1 above
-
-### Option 3: Standalone Docker
+### Docker (Recommended for standalone use)
 
 ```bash
-docker build -t wyoming-pocket-tts .
-
 docker run -d \
+  --name pocket-tts \
   -p 10200:10200 \
-  -v /path/to/voices:/share/tts-voices \
-  wyoming-pocket-tts
+  -v pocket-tts-voices:/share/tts-voices \
+  ghcr.io/araa47/wyoming_pocket_tts:latest
 
 # For voice cloning, add your HuggingFace token:
 # -e HF_TOKEN=your_token_here
 ```
 
-### Option 4: Local Development
+### Home Assistant Add-on
+
+1. Go to **Settings > Add-ons > Add-on Store**
+2. Click **...** > **Repositories** and add:
+   ```
+   https://github.com/araa47/wyoming_pocket_tts
+   ```
+3. Install **Wyoming Pocket TTS** and start it
+4. The add-on auto-discovers in **Settings > Devices & Services**
+
+> First startup downloads the TTS model (~500MB) and may take 3-5 minutes.
+
+### Local Development
 
 ```bash
-cd wyoming_pocket_tts
 uv sync
 uv run python -m wyoming_pocket_tts --voice alba --debug
 ```
 
-## Adding Custom Voices (Voice Cloning)
+## Requirements
 
-> **Requirements for voice cloning:**
-> 1. Create a free [HuggingFace account](https://huggingface.co/join)
-> 2. [Accept the Kokoro model terms](https://huggingface.co/hexgrad/Kokoro-82M) (required for voice cloning feature)
-> 3. [Get your HF token](https://huggingface.co/settings/tokens) and add it to the add-on config
->
-> These steps are **only needed for voice cloning** - built-in voices work without any HuggingFace setup.
+| | |
+|---|---|
+| **Disk space** | ~1.5-2 GB (Docker image ~270 MB + model ~500 MB) |
+| **Voice cloning** | Free [HuggingFace account](https://huggingface.co/join) with [accepted model terms](https://huggingface.co/kyutai/pocket-tts) |
+
+> Built-in voices work without any HuggingFace setup. A token is only needed for voice cloning.
+
+## Configuration
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `voice` | `alba` | Default voice |
+| `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
+| `preload_voices` | `false` | Load all preset voices at startup |
+| `debug` | `false` | Enable debug logging |
+| `hf_token` | — | HuggingFace token (voice cloning only) |
+
+## Preset Voices
+
+| Voice | Description |
+|-------|-------------|
+| `alba` | Female, neutral American |
+| `marius` | Male, casual |
+| `javert` | Male, authoritative |
+| `jean` | Male, warm |
+| `fantine` | Female, expressive |
+| `cosette` | Female, gentle |
+| `eponine` | Female, British |
+| `azelma` | Female, youthful |
+
+## Voice Cloning
+
+> **Requires:** [HuggingFace token](https://huggingface.co/settings/tokens) with [accepted Kokoro model terms](https://huggingface.co/hexgrad/Kokoro-82M).
 
 1. Record 15-30 seconds of clear speech (WAV, MP3, or OGG)
-
 2. Copy to the voices directory:
    ```bash
    cp my_voice.wav /share/tts-voices/
    ```
-
-3. Restart the add-on to load the new voice
-
-4. **Reload the Wyoming integration in Home Assistant** (required for new voices to appear):
-   - Go to **Settings → Devices & Services**
-   - Find the **Wyoming Protocol** integration
-   - Click on your **Pocket TTS** device
-   - Click the **⋮** menu → **Reload**
-
-   > **Note**: Home Assistant caches the voice list. Without this reload step, your new voice won't appear in the voice dropdown when configuring assistants.
-
-5. Use the voice by name (filename without extension):
+3. Restart the add-on
+4. Reload the Wyoming integration in Home Assistant:
+   **Settings > Devices & Services > Wyoming Protocol > Pocket TTS > ... > Reload**
+5. Use the voice by filename (without extension):
    ```yaml
    service: tts.speak
    data:
@@ -142,90 +115,74 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
        voice: my_voice
    ```
 
-### Voice Recording Tips
-
-For best voice cloning results:
+### Recording Tips
 
 | Aspect | Recommendation |
 |--------|----------------|
 | **Length** | 15-30 seconds (minimum 5s) |
-| **Quality** | 44.1kHz, 16-bit, WAV preferred |
-| **Content** | Natural conversation, NOT scripted |
+| **Quality** | 44.1 kHz, 16-bit, WAV preferred |
+| **Content** | Natural conversation, not scripted |
 | **Environment** | Quiet room, no echo |
 | **Style** | Varied intonation (questions + statements) |
 
-**Good sample script:**
+**Example prompt:**
 > "Hey, so I was thinking about dinner tonight. Maybe pasta? Or we could order something. What do you think? Oh, and don't forget we have that thing tomorrow morning."
-
-## Configuration Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `voice` | `alba` | Default voice for TTS |
-| `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
-| `preload_voices` | `false` | Load all preset voices at startup |
-| `debug` | `false` | Enable debug logging |
-| `hf_token` | (optional) | HuggingFace API token (only required for voice cloning) |
-
-## Preset Voices
-
-| Voice | Description |
-|-------|-------------|
-| alba | Female, neutral American |
-| marius | Male, casual |
-| javert | Male, authoritative |
-| jean | Male, warm |
-| fantine | Female, expressive |
-| cosette | Female, gentle |
-| eponine | Female, British |
-| azelma | Female, youthful |
 
 ## API
 
-The server implements the Wyoming protocol on TCP port 10200.
-
-### Test with netcat
+The server speaks [Wyoming protocol](https://github.com/rhasspy/wyoming) on TCP port `10200`.
 
 ```bash
-# Check if server is running
+# Health check
 echo '{"type":"describe"}' | nc localhost 10200
-```
 
-### Synthesize speech
-
-```bash
+# Synthesize speech
 echo '{"type":"synthesize","data":{"text":"Hello world","voice":{"name":"alba"}}}' | nc localhost 10200
 ```
 
 ## Troubleshooting
 
-### "Gated model" error (voice cloning only)
-This error only occurs when using voice cloning. Built-in voices don't require HuggingFace access.
+<details>
+<summary><strong>"Gated model" error (voice cloning only)</strong></summary>
 
-To fix for voice cloning:
+Built-in voices don't require HuggingFace access. For voice cloning:
+
 1. Go to https://huggingface.co/hexgrad/Kokoro-82M
 2. Log in and accept the model terms
 3. Get your token from https://huggingface.co/settings/tokens
 4. Add it to the add-on config as `hf_token`
 
-### Custom voice not appearing in Home Assistant
-Home Assistant caches the voice list from Wyoming providers. After adding a new voice:
+</details>
+
+<details>
+<summary><strong>Custom voice not appearing in Home Assistant</strong></summary>
+
+Home Assistant caches the voice list. After adding a new voice:
+
 1. Restart the Pocket TTS add-on
-2. Go to **Settings → Devices & Services → Wyoming Protocol**
-3. Click on your Pocket TTS device → **⋮** menu → **Reload**
+2. Go to **Settings > Devices & Services > Wyoming Protocol**
+3. Click on your Pocket TTS device > **...** > **Reload**
 
-The new voice should now appear in the voice dropdown.
+</details>
 
-### Voice not found
+<details>
+<summary><strong>Voice not found</strong></summary>
+
 - Check the filename matches (without extension)
 - Ensure the file is in the `voices_dir` path
 - Check add-on logs for loading errors
 
-### Slow first request
+</details>
+
+<details>
+<summary><strong>Slow first request</strong></summary>
+
 The model loads on first request (~2s). Enable `preload_voices` for faster responses.
+
+</details>
 
 ## License
 
-MIT License - see LICENSE file.
+MIT License — see [LICENSE](LICENSE).
 
-Pocket TTS is licensed under CC-BY-4.0 with usage restrictions. See [model card](https://huggingface.co/kyutai/pocket-tts) for terms.
+Pocket TTS is licensed under CC-BY-4.0 with usage restrictions. See the [model card](https://huggingface.co/kyutai/pocket-tts) for terms.
