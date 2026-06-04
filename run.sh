@@ -10,6 +10,8 @@ if command -v bashio &> /dev/null; then
     VOICE=$(bashio::config 'voice')
     VOICES_DIR=$(bashio::config 'voices_dir')
     PRELOAD_VOICES=$(bashio::config 'preload_voices')
+    NORMALIZE_VOLUME=$(bashio::config 'normalize_volume')
+    NORMALIZE_TARGET_DB=$(bashio::config 'normalize_target_db')
     DEBUG=$(bashio::config 'debug')
     HF_TOKEN=$(bashio::config 'hf_token')
 else
@@ -18,6 +20,8 @@ else
         VOICE=$(jq -r '.voice // "alba"' "$CONFIG_PATH")
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
         PRELOAD_VOICES=$(jq -r '.preload_voices // false' "$CONFIG_PATH")
+        NORMALIZE_VOLUME=$(jq -r '.normalize_volume // false' "$CONFIG_PATH")
+        NORMALIZE_TARGET_DB=$(jq -r '.normalize_target_db // -1' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
         HF_TOKEN=$(jq -r '.hf_token // ""' "$CONFIG_PATH")
     else
@@ -25,6 +29,8 @@ else
         VOICE="${VOICE:-alba}"
         VOICES_DIR="${VOICES_DIR:-/share/tts-voices}"
         PRELOAD_VOICES="${PRELOAD_VOICES:-false}"
+        NORMALIZE_VOLUME="${NORMALIZE_VOLUME:-false}"
+        NORMALIZE_TARGET_DB="${NORMALIZE_TARGET_DB:--1}"
         DEBUG="${DEBUG:-false}"
         HF_TOKEN="${HF_TOKEN:-}"
     fi
@@ -45,10 +51,15 @@ ARGS=(
     --port "10200"
     --voice "$VOICE"
     --voices-dir "$VOICES_DIR"
+    --normalize-target-db "$NORMALIZE_TARGET_DB"
 )
 
 if [ "$PRELOAD_VOICES" = "true" ]; then
     ARGS+=(--preload-voices)
+fi
+
+if [ "$NORMALIZE_VOLUME" = "true" ]; then
+    ARGS+=(--normalize-volume)
 fi
 
 if [ "$DEBUG" = "true" ]; then
@@ -61,6 +72,7 @@ echo "========================================"
 echo "Voice: $VOICE"
 echo "Voices dir: $VOICES_DIR"
 echo "Preload voices: $PRELOAD_VOICES"
+echo "Normalize volume: $NORMALIZE_VOLUME (target ${NORMALIZE_TARGET_DB} dBFS)"
 echo "Debug: $DEBUG"
 echo "========================================"
 

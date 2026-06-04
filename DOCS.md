@@ -38,7 +38,15 @@ In the add-on Configuration tab:
 | `voice` | Default voice: alba, jean, fantine, etc. |
 | `voices_dir` | Path for custom voice samples |
 | `preload_voices` | Load all voices at startup (slower start, faster TTS) |
+| `normalize_volume` | Peak-normalize each clip so quiet voice prompts still produce loud, full-volume speech (lossless, no clipping) |
+| `normalize_target_db` | Target peak in dBFS for `normalize_volume` (default `-1`; closer to `0` is louder) |
 | `debug` | Enable verbose logging |
+
+> **Tip:** Pocket TTS output volume follows the loudness of your voice prompt — a
+> quiet cloning sample yields quiet speech that sounds weak on a speaker even at
+> full device volume. Enable `normalize_volume` to bring every clip up to a
+> consistent level without distortion. For best results, also clone from a clear,
+> loud section of your source recording.
 
 ### 4. Start Add-on & Connect to Home Assistant
 
