@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 from pocket_tts import TTSModel
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.event import Event
@@ -11,6 +12,21 @@ from wyoming.server import AsyncEventHandler
 from wyoming.tts import Synthesize
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def peak_normalize(samples: "np.ndarray", target_db: float) -> "np.ndarray":
+    """Scale ``samples`` so the loudest sample reaches ``target_db`` dBFS.
+
+    Pure amplitude scaling by a single factor: it is lossless and never clips
+    (the result peaks at exactly the target, which is <= 0 dBFS). Silent input
+    is returned unchanged. ``target_db`` should be <= 0.
+    """
+    peak = float(np.max(np.abs(samples)))
+    if peak <= 0.0:
+        return samples
+    target = 10.0 ** (target_db / 20.0)
+    return samples * (target / peak)
+
 
 # Pocket TTS preset voices
 PRESET_VOICES = [
@@ -113,7 +129,18 @@ class PocketTTSEventHandler(AsyncEventHandler):
             # Generate audio
             try:
                 audio_tensor = self.model.generate_audio(voice_state, synthesize.text)  # type: ignore[arg-type]
-                audio_bytes = (audio_tensor.numpy() * 32767).astype("int16").tobytes()
+                samples = audio_tensor.numpy()
+
+                # Optional peak normalization. Pocket TTS output level tracks the
+                # loudness of the voice prompt, so a quiet sample produces quiet
+                # speech that sounds weak on a speaker even at full volume. This
+                # scales the whole clip by a single factor so its loudest sample
+                # just reaches the target ceiling -- lossless and never clipping,
+                # so it raises volume without adding distortion.
+                if getattr(self.cli_args, "normalize_volume", False):
+                    samples = peak_normalize(samples, self.cli_args.normalize_target_db)
+
+                audio_bytes = (samples * 32767).astype("int16").tobytes()
 
                 # Send audio via Wyoming protocol
                 sample_rate = self.model.sample_rate

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.6] - 2026-06-04
+
+### Added
+- **`normalize_volume` option** to peak-normalize generated speech. Pocket TTS
+  output level follows the loudness of the voice prompt, so quiet cloning
+  samples produce quiet speech that is weak on a speaker even at full device
+  volume. Normalization scales each clip so its loudest sample reaches
+  `normalize_target_db` (default `-1` dBFS) — a lossless, non-clipping gain.
+- **`normalize_target_db` option** to set the normalization ceiling.
+
 ## [1.0.4] - 2026-01-29
 
 ### Changed
