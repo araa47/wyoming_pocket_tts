@@ -37,7 +37,7 @@ In the add-on Configuration tab:
 | `hf_token` | Your HuggingFace token (required) |
 | `voice` | Default voice: alba, jean, fantine, etc. |
 | `voices_dir` | Path for custom voice samples |
-| `preload_voices` | Load all voices at startup (slower start, faster TTS) |
+| `preload_voices` | Comma-separated voice names to preload, e.g. `rocky` or `rocky,alba` (empty = only the default `voice`; `all` = every voice, most RAM). Non-preloaded voices load on first use |
 | `normalize_volume` | Peak-normalize each clip so quiet voice prompts still produce loud, full-volume speech (lossless, no clipping) |
 | `normalize_target_db` | Target peak in dBFS for `normalize_volume` (default `-1`; closer to `0` is louder) |
 | `debug` | Enable verbose logging |
@@ -127,7 +127,7 @@ data:
 
 ### Slow first response
 
-The model loads on first request (~2-3 seconds). Enable `preload_voices` for instant responses.
+Each voice loads on first use (~2-3 seconds). Set `preload_voices` to your voice name(s) (e.g. `rocky`) for instant first responses without loading every voice into RAM.
 
 ### Custom voice not appearing in dropdown
 

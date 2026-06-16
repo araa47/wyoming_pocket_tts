@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-16
+
+### Changed
+- **`preload_voices` is now a list of voice names instead of a boolean.** Set it to
+  the voice(s) you actually use (e.g. `rocky`, or `rocky,alba`) to preload only those.
+  Empty (the new default) preloads just the configured `voice`; `all` preloads every
+  preset and custom voice (the old `true` behaviour). This sharply cuts memory: preloading
+  all voices held every voice state in RAM (~1.9 GB observed) and could OOM-kill the
+  add-on on memory-constrained hosts, which surfaced as intermittent TTS failures.
+
+### Added
+- On-demand voice loading now covers **custom** voices, not just presets — so any voice
+  that is not preloaded still works on first use (loaded lazily from the voices directory).
+
+### Migration
+- The `preload_voices` option type changed from boolean to string. If yours was `true`,
+  set it to `all` (same behaviour) or, better, to your voice name(s) like `rocky`. `false`
+  or empty now preloads only the default voice. Legacy `true`/`false` values are mapped
+  automatically by the run script; update the option in the UI if Home Assistant flags it.
+
 ## [1.0.6] - 2026-06-04
 
 ### Added
