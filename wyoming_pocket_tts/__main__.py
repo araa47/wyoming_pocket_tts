@@ -15,7 +15,8 @@ from .handler import (
     PRESET_VOICES,
     PocketTTSEventHandler,
     get_wyoming_info,
-    load_custom_voices,
+    list_custom_voice_names,
+    load_voice,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,8 +48,13 @@ async def main() -> None:
     )
     parser.add_argument(
         "--preload-voices",
-        action="store_true",
-        help="Preload all preset voices at startup (slower startup, faster first request)",
+        default="",
+        help=(
+            "Comma-separated voice names to preload at startup, e.g. 'rocky' or "
+            "'rocky,alba'. Empty preloads only the default --voice. 'all' preloads "
+            "every preset and custom voice (most RAM). Non-preloaded voices load on "
+            "demand on first use. Preloading fewer voices uses far less memory."
+        ),
     )
     parser.add_argument(
         "--normalize-volume",
@@ -100,39 +106,50 @@ async def main() -> None:
     model = TTSModel.load_model()
     _LOGGER.info("Model loaded successfully (sample rate: %d Hz)", model.sample_rate)
 
-    # Load custom voices from directory
-    voice_states = load_custom_voices(args.voices_dir, model)
-    _LOGGER.info(
-        "Loaded %d custom voice(s) from %s", len(voice_states), args.voices_dir
-    )
+    # Discover custom voices present in the voices directory (names only, no load).
+    custom_voice_names = list_custom_voice_names(args.voices_dir)
+    if custom_voice_names:
+        _LOGGER.info(
+            "Found %d custom voice(s) in %s: %s",
+            len(custom_voice_names),
+            args.voices_dir,
+            ", ".join(custom_voice_names),
+        )
 
-    # Optionally preload preset voices
-    if args.preload_voices:
-        _LOGGER.info("Preloading preset voices...")
-        for voice in PRESET_VOICES:
-            if voice not in voice_states:
-                try:
-                    # Use preset voice name directly (no HF auth required)
-                    voice_states[voice] = model.get_state_for_audio_prompt(voice)  # type: ignore[arg-type]
-                    _LOGGER.info("Preloaded voice: %s", voice)
-                except Exception as e:
-                    _LOGGER.warning("Failed to preload voice %s: %s", voice, e)
+    # Decide which voices to preload. Each voice state is large, so preloading
+    # everything wastes RAM and can OOM small hosts. Only the selected voices load
+    # now; the rest load on demand on first use.
+    preload_raw = (args.preload_voices or "").strip()
+    if preload_raw.lower() == "all":
+        to_preload = PRESET_VOICES + custom_voice_names
+    elif preload_raw == "":
+        to_preload = [args.voice]  # default: only the selected voice
+    else:
+        to_preload = [v.strip() for v in preload_raw.split(",") if v.strip()]
+    # Always ensure the configured default voice is ready.
+    if args.voice not in to_preload:
+        to_preload.append(args.voice)
 
-    # Load default voice if not already loaded
-    if args.voice not in voice_states:
-        _LOGGER.info("Loading default voice: %s", args.voice)
-        if args.voice in PRESET_VOICES:
-            # Use preset voice name directly (no HF auth required)
-            voice_states[args.voice] = model.get_state_for_audio_prompt(args.voice)  # type: ignore[arg-type]
+    voice_states: dict = {}
+    for name in dict.fromkeys(to_preload):  # de-dup, preserve order
+        state = load_voice(model, name, args.voices_dir)
+        if state is not None:
+            voice_states[name] = state
+            _LOGGER.info("Preloaded voice: %s", name)
         else:
-            # Assume it's a preset voice
             _LOGGER.warning(
-                "Default voice %s not found, will load on first request", args.voice
+                "Could not preload voice '%s' (unknown name?); will try on demand",
+                name,
             )
 
-    # Build list of available voices
-    available_voices = list(set(PRESET_VOICES + list(voice_states.keys())))
-    _LOGGER.info("Available voices: %s", ", ".join(available_voices))
+    # Advertise every available voice (presets + custom files present), even if not
+    # preloaded, so they are all selectable from Home Assistant.
+    available_voices = list(dict.fromkeys(PRESET_VOICES + custom_voice_names))
+    _LOGGER.info(
+        "Preloaded %d voice(s); %d available total",
+        len(voice_states),
+        len(available_voices),
+    )
 
     # Create Wyoming info
     wyoming_info = get_wyoming_info(available_voices)

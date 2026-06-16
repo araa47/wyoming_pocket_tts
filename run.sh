@@ -19,7 +19,7 @@ else
     if [ -f "$CONFIG_PATH" ]; then
         VOICE=$(jq -r '.voice // "alba"' "$CONFIG_PATH")
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
-        PRELOAD_VOICES=$(jq -r '.preload_voices // false' "$CONFIG_PATH")
+        PRELOAD_VOICES=$(jq -r '.preload_voices // ""' "$CONFIG_PATH")
         NORMALIZE_VOLUME=$(jq -r '.normalize_volume // false' "$CONFIG_PATH")
         NORMALIZE_TARGET_DB=$(jq -r '.normalize_target_db // -1' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
@@ -28,7 +28,7 @@ else
         # Defaults for standalone usage
         VOICE="${VOICE:-alba}"
         VOICES_DIR="${VOICES_DIR:-/share/tts-voices}"
-        PRELOAD_VOICES="${PRELOAD_VOICES:-false}"
+        PRELOAD_VOICES="${PRELOAD_VOICES:-}"
         NORMALIZE_VOLUME="${NORMALIZE_VOLUME:-false}"
         NORMALIZE_TARGET_DB="${NORMALIZE_TARGET_DB:--1}"
         DEBUG="${DEBUG:-false}"
@@ -54,9 +54,12 @@ ARGS=(
     --normalize-target-db "$NORMALIZE_TARGET_DB"
 )
 
-if [ "$PRELOAD_VOICES" = "true" ]; then
-    ARGS+=(--preload-voices)
-fi
+# Backwards compatibility: preload_voices used to be a boolean (true = all voices).
+case "$PRELOAD_VOICES" in
+  true | True | TRUE) PRELOAD_VOICES="all" ;;
+  false | False | FALSE | null) PRELOAD_VOICES="" ;;
+esac
+ARGS+=(--preload-voices "$PRELOAD_VOICES")
 
 if [ "$NORMALIZE_VOLUME" = "true" ]; then
     ARGS+=(--normalize-volume)

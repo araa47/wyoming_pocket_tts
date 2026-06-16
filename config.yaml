@@ -3,7 +3,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration
 
 name: Wyoming Pocket TTS
-version: 1.0.6
+version: 1.1.0
 slug: wyoming_pocket_tts
 description: >-
     Fast, local text-to-speech with voice cloning using Kyutai Pocket TTS.
@@ -42,7 +42,7 @@ map:
 options:
     voice: alba
     voices_dir: /share/tts-voices
-    preload_voices: false
+    preload_voices: ''
     normalize_volume: false
     normalize_target_db: -1
     debug: false
@@ -51,7 +51,7 @@ options:
 schema:
     voice: str
     voices_dir: str
-    preload_voices: bool
+    preload_voices: str
     normalize_volume: bool
     normalize_target_db: float(-30,0)
     debug: bool

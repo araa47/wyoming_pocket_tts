@@ -76,7 +76,7 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
 |--------|---------|-------------|
 | `voice` | `alba` | Default voice |
 | `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
-| `preload_voices` | `false` | Load all preset voices at startup |
+| `preload_voices` | `''` | Voice name(s) to preload, e.g. `rocky` or `rocky,alba` (empty = only the default `voice`; `all` = every voice). Others load on first use |
 | `debug` | `false` | Enable debug logging |
 | `hf_token` | — | HuggingFace token (voice cloning only) |
 
@@ -177,7 +177,7 @@ Home Assistant caches the voice list. After adding a new voice:
 <details>
 <summary><strong>Slow first request</strong></summary>
 
-The model loads on first request (~2s). Enable `preload_voices` for faster responses.
+Each voice loads on first use (~2s). Set `preload_voices` to your voice name(s) (e.g. `rocky`) for instant first responses without loading every voice into RAM.
 
 </details>
 

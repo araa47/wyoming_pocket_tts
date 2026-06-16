@@ -1,3 +1,3 @@
 """Wyoming protocol server for Pocket TTS."""
 
-__version__ = "1.0.5"
+__version__ = "1.1.0"

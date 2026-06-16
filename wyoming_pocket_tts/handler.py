@@ -40,6 +40,52 @@ PRESET_VOICES = [
     "azelma",
 ]
 
+# Audio formats accepted for custom voice samples in the voices directory.
+AUDIO_EXTENSIONS = {".wav", ".mp3", ".ogg", ".flac", ".m4a"}
+
+
+def find_custom_voice_file(voices_dir: str, name: str) -> "Path | None":
+    """Return the custom voice sample file for ``name`` in ``voices_dir``, if any."""
+    voices_path = Path(voices_dir)
+    if not voices_path.exists():
+        return None
+    for audio_file in voices_path.iterdir():
+        if audio_file.suffix.lower() in AUDIO_EXTENSIONS and audio_file.stem == name:
+            return audio_file
+    return None
+
+
+def list_custom_voice_names(voices_dir: str) -> list[str]:
+    """List custom voice names (file stems) available in ``voices_dir`` (no loading)."""
+    voices_path = Path(voices_dir)
+    if not voices_path.exists():
+        return []
+    return [
+        f.stem for f in voices_path.iterdir() if f.suffix.lower() in AUDIO_EXTENSIONS
+    ]
+
+
+def load_voice(model: TTSModel, name: str, voices_dir: str):
+    """Load a single voice state by name (preset or custom file). Returns state or None.
+
+    Each loaded voice holds a sizeable state in memory, so callers preload only the
+    voices they need and rely on this for on-demand loading of the rest.
+    """
+    if name in PRESET_VOICES:
+        try:
+            # Preset voice name is passed directly (no HF auth required).
+            return model.get_state_for_audio_prompt(name)  # type: ignore[arg-type]
+        except Exception as e:
+            _LOGGER.error("Failed to load preset voice %s: %s", name, e)
+            return None
+    custom_file = find_custom_voice_file(voices_dir, name)
+    if custom_file is not None:
+        try:
+            return model.get_state_for_audio_prompt(str(custom_file))  # type: ignore[arg-type]
+        except Exception as e:
+            _LOGGER.error("Failed to load custom voice %s: %s", name, e)
+    return None
+
 
 class PocketTTSEventHandler(AsyncEventHandler):
     """Handle Wyoming TTS events with Pocket TTS."""
@@ -60,15 +106,9 @@ class PocketTTSEventHandler(AsyncEventHandler):
         self.model = model
         self.voice_states = voice_states
 
-    def _load_preset_voice(self, voice_name: str):
-        """Load a preset voice on-demand."""
-        if voice_name in PRESET_VOICES:
-            try:
-                # Use preset voice name directly (no HF auth required)
-                return self.model.get_state_for_audio_prompt(voice_name)  # type: ignore[arg-type]
-            except Exception as e:
-                _LOGGER.error("Failed to load voice %s: %s", voice_name, e)
-        return None
+    def _load_voice(self, voice_name: str):
+        """Load a voice (preset or custom) on-demand."""
+        return load_voice(self.model, voice_name, self.cli_args.voices_dir)
 
     async def handle_event(self, event: Event) -> bool:
         """Handle Wyoming events."""
@@ -94,17 +134,15 @@ class PocketTTSEventHandler(AsyncEventHandler):
 
             _LOGGER.info("Generating speech with voice: %s", voice_name)
 
-            # Get voice state (preset or custom)
+            # Get voice state (preset or custom), loading on-demand if not preloaded.
             voice_state = self.voice_states.get(voice_name)
             if voice_state is None:
-                # Try to load preset voice on-demand
-                if voice_name in PRESET_VOICES:
-                    _LOGGER.info("Loading preset voice on-demand: %s", voice_name)
-                    voice_state = self._load_preset_voice(voice_name)
-                    if voice_state:
-                        self.voice_states[voice_name] = voice_state
-                else:
-                    # Unknown voice - fall back to default
+                _LOGGER.info("Loading voice on-demand: %s", voice_name)
+                voice_state = self._load_voice(voice_name)
+                if voice_state is not None:
+                    self.voice_states[voice_name] = voice_state
+                elif voice_name != self.cli_args.voice:
+                    # Unknown voice - fall back to the configured default.
                     _LOGGER.warning(
                         "Voice '%s' not found, using default: %s",
                         voice_name,
@@ -112,11 +150,9 @@ class PocketTTSEventHandler(AsyncEventHandler):
                     )
                     voice_name = self.cli_args.voice
                     voice_state = self.voice_states.get(voice_name)
-                    # Load default voice on-demand if not already loaded
-                    if voice_state is None and voice_name in PRESET_VOICES:
-                        _LOGGER.info("Loading default voice on-demand: %s", voice_name)
-                        voice_state = self._load_preset_voice(voice_name)
-                        if voice_state:
+                    if voice_state is None:
+                        voice_state = self._load_voice(voice_name)
+                        if voice_state is not None:
                             self.voice_states[voice_name] = voice_state
 
             if voice_state is None:
