@@ -14,9 +14,11 @@ from . import __version__
 from .handler import (
     PRESET_VOICES,
     PocketTTSEventHandler,
+    default_preset_for_language,
     get_wyoming_info,
     list_custom_voice_names,
     load_voice,
+    normalize_language,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +59,17 @@ async def main() -> None:
         ),
     )
     parser.add_argument(
+        "--language",
+        default="en",
+        help=(
+            "Language to use (default: en). Supported: en, fr, de, pt, it, es, "
+            "fr_24l, de_24l, pt_24l, "
+            "plus upstream names english, french, german, portuguese, italian, "
+            "spanish and 24l preview variants. Custom/cloned voices are loaded "
+            "through the selected language model."
+        ),
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging",
@@ -82,10 +95,11 @@ async def main() -> None:
         os.environ["HF_TOKEN"] = hf_token
 
     _LOGGER.info("Starting Wyoming Pocket TTS server v%s", __version__)
-    _LOGGER.info("Loading Pocket TTS model...")
+    args.language = normalize_language(args.language)
+    _LOGGER.info("Loading Pocket TTS model for language: %s", args.language)
 
     # Load model
-    model = TTSModel.load_model()
+    model = TTSModel.load_model(language=args.language)
     _LOGGER.info("Model loaded successfully (sample rate: %d Hz)", model.sample_rate)
 
     # Discover custom voices present in the voices directory (names only, no load).
@@ -111,6 +125,9 @@ async def main() -> None:
     # Always ensure the configured default voice is ready.
     if args.voice not in to_preload:
         to_preload.append(args.voice)
+    fallback_voice = default_preset_for_language(args.language)
+    if args.voice not in PRESET_VOICES and fallback_voice not in to_preload:
+        to_preload.append(fallback_voice)
 
     voice_states: dict = {}
     for name in dict.fromkeys(to_preload):  # de-dup, preserve order
@@ -134,7 +151,7 @@ async def main() -> None:
     )
 
     # Create Wyoming info
-    wyoming_info = get_wyoming_info(available_voices)
+    wyoming_info = get_wyoming_info(available_voices, args.language)
 
     # Start server
     server = AsyncServer.from_uri(f"tcp://{args.host}:{args.port}")

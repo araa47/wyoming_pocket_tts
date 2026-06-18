@@ -8,6 +8,7 @@ CONFIG_PATH=/data/options.json
 # Parse config with bashio if available, otherwise use jq
 if command -v bashio &> /dev/null; then
     VOICE=$(bashio::config 'voice')
+    LANGUAGE=$(bashio::config 'language')
     VOICES_DIR=$(bashio::config 'voices_dir')
     PRELOAD_VOICES=$(bashio::config 'preload_voices')
     DEBUG=$(bashio::config 'debug')
@@ -16,6 +17,7 @@ else
     # Fallback to jq for standalone Docker
     if [ -f "$CONFIG_PATH" ]; then
         VOICE=$(jq -r '.voice // "alba"' "$CONFIG_PATH")
+        LANGUAGE=$(jq -r '.language // "en"' "$CONFIG_PATH")
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
         PRELOAD_VOICES=$(jq -r '.preload_voices // ""' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
@@ -23,6 +25,7 @@ else
     else
         # Defaults for standalone usage
         VOICE="${VOICE:-alba}"
+        LANGUAGE="${LANGUAGE:-en}"
         VOICES_DIR="${VOICES_DIR:-/share/tts-voices}"
         PRELOAD_VOICES="${PRELOAD_VOICES:-}"
         DEBUG="${DEBUG:-false}"
@@ -44,6 +47,7 @@ ARGS=(
     --host "0.0.0.0"
     --port "10200"
     --voice "$VOICE"
+    --language "$LANGUAGE"
     --voices-dir "$VOICES_DIR"
 )
 
@@ -62,6 +66,7 @@ echo "========================================"
 echo "Wyoming Pocket TTS Server"
 echo "========================================"
 echo "Voice: $VOICE"
+echo "Language: $LANGUAGE"
 echo "Voices dir: $VOICES_DIR"
 echo "Preload voices: $PRELOAD_VOICES"
 echo "Debug: $DEBUG"

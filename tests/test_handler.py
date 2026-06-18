@@ -2,14 +2,19 @@
 
 import asyncio
 from types import SimpleNamespace
+from typing import cast
 
 import torch
+from pocket_tts import TTSModel
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.tts import Synthesize
+from wyoming.tts import Synthesize, SynthesizeVoice
 from wyoming_pocket_tts.handler import (
     PRESET_VOICES,
     PocketTTSEventHandler,
+    default_preset_for_language,
     get_wyoming_info,
+    load_voice,
+    normalize_language,
 )
 
 
@@ -33,6 +38,23 @@ def test_get_wyoming_info_voices():
     info = get_wyoming_info(voices)
     voice_names = [v.name for v in info.tts[0].voices]
     assert set(voice_names) == set(voices)
+
+
+def test_get_wyoming_info_uses_configured_language():
+    info = get_wyoming_info(["alba"], "spanish")
+    assert info.tts[0].voices[0].languages == ["es"]
+
+
+def test_normalize_language_accepts_short_codes():
+    assert normalize_language("en") == "english"
+    assert normalize_language("fr") == "french"
+    assert normalize_language("fr_24l") == "french_24l"
+    assert normalize_language("spanish_24l") == "spanish_24l"
+
+
+def test_default_preset_for_language():
+    assert default_preset_for_language("es") == "lola"
+    assert default_preset_for_language("fr_24l") == "estelle"
 
 
 def test_get_wyoming_info_empty_voices():
@@ -64,7 +86,11 @@ class _RecordingHandler(PocketTTSEventHandler):
         # Bypass AsyncEventHandler.__init__ (needs a reader/writer); set only
         # what handle_event uses.
         self.wyoming_info = get_wyoming_info(["alba"])
-        self.cli_args = SimpleNamespace(voice="alba", voices_dir="/nonexistent")
+        self.cli_args = SimpleNamespace(
+            voice="alba",
+            language="english",
+            voices_dir="/nonexistent",
+        )
         self.model = model
         self.voice_states = {"alba": object()}
         self.written = []
@@ -107,3 +133,46 @@ def test_empty_text_sends_clean_empty_response():
     assert AudioStart.is_type(handler.written[0].type)
     assert AudioStop.is_type(handler.written[-1].type)
     assert not [e for e in handler.written if AudioChunk.is_type(e.type)]
+
+
+def test_non_english_custom_voice_request_is_allowed():
+    model = _FakeModel()
+    handler = _RecordingHandler(model)
+    handler.cli_args.language = "spanish"
+    handler.voice_states = {"alba": object(), "custom_voice": object()}
+
+    result = _run(
+        handler.handle_event(
+            Synthesize(text="hola", voice=SynthesizeVoice(name="custom_voice")).event()
+        )
+    )
+
+    assert result is True
+    assert model.stream_calls == 1
+
+
+def test_custom_voice_requires_cloning_weights(tmp_path):
+    voice_file = tmp_path / "rocky.ogg"
+    voice_file.write_bytes(b"fake")
+
+    class ModelWithoutCloning(_FakeModel):
+        has_voice_cloning = False
+
+        def get_state_for_audio_prompt(self, audio_conditioning):
+            raise AssertionError("custom audio should not be loaded")
+
+    model = cast(TTSModel, ModelWithoutCloning())
+    assert load_voice(model, "rocky", str(tmp_path)) is None
+
+
+def test_custom_default_falls_back_to_language_preset_when_unavailable():
+    model = _FakeModel()
+    handler = _RecordingHandler(model)
+    handler.cli_args.voice = "rocky"
+    handler.cli_args.language = "spanish"
+    handler.voice_states = {"lola": object()}
+
+    result = _run(handler.handle_event(Synthesize(text="hola").event()))
+
+    assert result is True
+    assert model.stream_calls == 1

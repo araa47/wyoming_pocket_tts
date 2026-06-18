@@ -23,9 +23,10 @@
 
 - **Fast** — ~10x realtime on CPU, no GPU required
 - **Voice Cloning** — clone any voice from 15-30 seconds of audio
+- **Multi-language** — English, French, German, Portuguese, Italian, and Spanish
 - **Local** — 100% on-device, no cloud dependency
 - **Wyoming Compatible** — plug into Home Assistant voice pipelines
-- **8 Preset Voices** — alba, marius, javert, jean, fantine, cosette, eponine, azelma
+- **Preset Voices** — expanded Pocket TTS preset catalog across supported languages
 
 ## Quick Start
 
@@ -75,27 +76,63 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
 | Option | Default | Description |
 |--------|---------|-------------|
 | `voice` | `alba` | Default voice |
+| `language` | `en` | TTS language. Supported: `en`, `fr`, `de`, `pt`, `it`, `es`, plus `fr_24l`, `de_24l`, `pt_24l`, `italian_24l`, and `spanish_24l` |
 | `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
 | `preload_voices` | `''` | Voice name(s) to preload, e.g. `rocky` or `rocky,alba` (empty = only the default `voice`; `all` = every voice). Others load on first use |
 | `debug` | `false` | Enable debug logging |
 | `hf_token` | — | HuggingFace token (voice cloning only) |
 
+## Languages
+
+Set `language` in the add-on configuration or pass `--language` when running
+locally. The default is `en`, so existing English and voice cloning setups keep
+working without any configuration change.
+
+Supported languages from Pocket TTS 2.1.0:
+
+| Code | Language |
+|------|----------|
+| `en` / `english` | English |
+| `fr` / `french` / `french_24l` | French |
+| `de` / `german` / `german_24l` | German |
+| `pt` / `portuguese` / `portuguese_24l` | Portuguese |
+| `it` / `italian` / `italian_24l` | Italian |
+| `es` / `spanish` / `spanish_24l` | Spanish |
+
+Custom voice samples are loaded through the selected language model, matching
+Pocket TTS's current API. Pocket TTS 2.1.0 ships cloning-capable weight paths for
+all listed language configs. Those weights are gated by Kyutai's Hugging Face
+model terms; if they cannot be downloaded, Pocket TTS falls back to
+non-cloning weights, preset voices still work, and custom voices fall back to a
+preset with a warning.
+
+Rocky voice cloning was locally verified with Hugging Face access for English,
+Spanish, French (`french_24l`), German, Portuguese, and Italian.
+
+Default non-English preset voices are `estelle` for French, `juergen` for German,
+`rafael` for Portuguese, `giovanni` for Italian, and `lola` for Spanish.
+
 ## Preset Voices
 
-| Voice | Description |
-|-------|-------------|
-| `alba` | Female, neutral American |
-| `marius` | Male, casual |
-| `javert` | Male, authoritative |
-| `jean` | Male, warm |
-| `fantine` | Female, expressive |
-| `cosette` | Female, gentle |
-| `eponine` | Female, British |
-| `azelma` | Female, youthful |
+| Language | Voices |
+|----------|--------|
+| English | `alba`, `anna`, `azelma`, `bill_boerst`, `caro_davy`, `charles`, `cosette`, `eponine`, `eve`, `fantine`, `george`, `jane`, `jean`, `javert`, `marius`, `mary`, `michael`, `paul`, `peter_yearsley`, `stuart_bell`, `vera` |
+| French | `estelle` |
+| German | `juergen` |
+| Portuguese | `rafael` |
+| Italian | `giovanni` |
+| Spanish | `lola` |
 
 ## Voice Cloning
 
-> **Requires:** [HuggingFace token](https://huggingface.co/settings/tokens) with [accepted Kokoro model terms](https://huggingface.co/hexgrad/Kokoro-82M).
+> **Requires:** [HuggingFace token](https://huggingface.co/settings/tokens) with [accepted Pocket TTS model terms](https://huggingface.co/kyutai/pocket-tts).
+>
+> Custom voice samples are encoded by the selected `language` model. Keep
+> `language: en` for the existing English cloning behavior. Other listed
+> languages use the same Pocket TTS cloning API and have cloning-capable weight
+> paths in Pocket TTS 2.1.0, but require Hugging Face access to Kyutai's gated
+> cloning weights. Rocky cloning has been smoke-tested locally with HF access for
+> English, Spanish, French, German, Portuguese, and Italian.
 
 1. Record 15-30 seconds of clear speech (WAV, MP3, or OGG)
 2. Copy to the voices directory:
@@ -147,7 +184,7 @@ echo '{"type":"synthesize","data":{"text":"Hello world","voice":{"name":"alba"}}
 
 Built-in voices don't require HuggingFace access. For voice cloning:
 
-1. Go to https://huggingface.co/hexgrad/Kokoro-82M
+1. Go to https://huggingface.co/kyutai/pocket-tts
 2. Log in and accept the model terms
 3. Get your token from https://huggingface.co/settings/tokens
 4. Add it to the add-on config as `hf_token`
