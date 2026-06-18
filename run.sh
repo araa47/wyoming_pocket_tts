@@ -10,16 +10,16 @@ if command -v bashio &> /dev/null; then
     VOICE=$(bashio::config 'voice')
     LANGUAGE=$(bashio::config 'language')
     VOICES_DIR=$(bashio::config 'voices_dir')
-    PRELOAD_VOICES=$(bashio::config 'preload_voices')
     DEBUG=$(bashio::config 'debug')
     HF_TOKEN=$(bashio::config 'hf_token')
+    PRELOAD_VOICES=$(jq -r 'if (.preload_voices | type) == "array" then .preload_voices | join(",") else .preload_voices // "" end' "$CONFIG_PATH")
 else
     # Fallback to jq for standalone Docker
     if [ -f "$CONFIG_PATH" ]; then
         VOICE=$(jq -r '.voice // "alba"' "$CONFIG_PATH")
         LANGUAGE=$(jq -r '.language // "en"' "$CONFIG_PATH")
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
-        PRELOAD_VOICES=$(jq -r '.preload_voices // ""' "$CONFIG_PATH")
+        PRELOAD_VOICES=$(jq -r 'if (.preload_voices | type) == "array" then .preload_voices | join(",") else .preload_voices // "" end' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
         HF_TOKEN=$(jq -r '.hf_token // ""' "$CONFIG_PATH")
     else

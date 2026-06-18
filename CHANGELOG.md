@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-06-18
+
+### Changed
+- Home Assistant add-on `language` field is now a dropdown select with all
+  supported languages.
+- Home Assistant add-on `voice` field is now a dropdown select with built-in
+  voice options.
+- Home Assistant add-on `preload_voices` is now a list input.
+- Improved README with a clearer quick start, voice cloning guide, language
+  table, and built-in voice reference.
+
 ## [1.3.0] - 2026-06-18
 
 ### Added
