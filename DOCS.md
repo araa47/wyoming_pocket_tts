@@ -12,36 +12,22 @@ This add-on runs [Pocket TTS](https://kyutai.org/tts), a lightweight TTS model t
 
 ## Setup
 
-### 1. Accept HuggingFace Terms
+### 1. Configure Built-in TTS
 
-Before using this add-on, you must accept the model terms:
-
-1. Go to [huggingface.co/kyutai/pocket-tts](https://huggingface.co/kyutai/pocket-tts)
-2. Log in or create a free account
-3. Click **"Agree and access repository"**
-
-### 2. Get HuggingFace Token
-
-1. Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-2. Click **"New token"**
-3. Name it (e.g., "home-assistant")
-4. Select **"Read"** access
-5. Copy the token (starts with `hf_`)
-
-### 3. Configure Add-on
+Built-in voices work without a Hugging Face account or token.
 
 In the add-on Configuration tab:
 
 | Option | Description |
 |--------|-------------|
-| `hf_token` | Your HuggingFace token (required) |
-| `voice` | Default voice: alba, jean, fantine, etc. |
-| `language` | TTS language. Default `en`. Supported: `en`, `fr`, `de`, `pt`, `it`, `es`, `fr_24l`, `de_24l`, `pt_24l`, `italian_24l`, `spanish_24l` |
-| `voices_dir` | Path for custom voice samples |
-| `preload_voices` | Comma-separated voice names to preload, e.g. `rocky` or `rocky,alba` (empty = only the default `voice`; `all` = every voice, most RAM). Non-preloaded voices load on first use |
+| `voice` | Default built-in voice. Start with `alba` for English, `estelle` for French, `juergen` for German, `rafael` for Portuguese, `giovanni` for Italian, or `lola` for Spanish |
+| `language` | TTS language/model to load. Default `en`. Supported: `en`, `fr`, `de`, `pt`, `it`, `es`, plus the 24-layer variants `fr_24l`, `de_24l`, `pt_24l`, `it_24l`, and `es_24l` |
+| `voices_dir` | Path for custom voice samples. Keep `/share/tts-voices` for Home Assistant add-on installs. Put `<voice_name>.ogg`, `.wav`, `.mp3`, `.flac`, or `.m4a` files here and use the filename without extension as the voice name |
+| `preload_voices` | Optional voice names to preload, one per line. Leave blank to preload only the default `voice`; use `all` only on hosts with enough RAM |
 | `debug` | Enable verbose logging |
+| `hf_token` | Optional Hugging Face read token. Required only for custom voice cloning |
 
-> **Language note:** English (`en`) keeps the existing voice cloning behavior.
+> **Language note:** English (`en`) keeps the existing behavior.
 > Custom voice samples are loaded through the selected Pocket TTS language model.
 > Pocket TTS 2.1.0 includes cloning-capable weight paths for every listed language
 > config. If those gated weights are unavailable, preset voices continue to work
@@ -54,7 +40,7 @@ In the add-on Configuration tab:
 > full device volume. For best results, clone from a clear, loud section of your
 > source recording.
 
-### 4. Start Add-on & Connect to Home Assistant
+### 2. Start Add-on & Connect to Home Assistant
 
 1. **Start the add-on** from the Info tab
 
@@ -76,11 +62,23 @@ In the add-on Configuration tab:
    - Edit or create an assistant
    - Set **Text-to-speech** to the Wyoming device you just added
 
+### 3. Optional: Enable Voice Cloning
+
+Voice cloning requires Hugging Face access to Kyutai's gated cloning weights.
+
+1. Go to [huggingface.co/kyutai/pocket-tts](https://huggingface.co/kyutai/pocket-tts)
+2. Log in or create a free account
+3. Click **"Agree and access repository"**
+4. Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+5. Create a **Read** token
+6. Paste the token into `hf_token` in the add-on Configuration tab
+7. Restart the add-on
+
 ## Adding Custom Voices
 
 Clone any voice from a short audio sample:
 
-1. Record 15-30 seconds of clear speech (WAV, MP3, or OGG)
+1. Record 5-30 seconds of clear speech; 15-30 seconds works best
 2. Upload to `/share/tts-voices/` via Samba/SSH
 3. Name the file (e.g., `my_voice.wav`)
 4. Restart the add-on to load the new voice
