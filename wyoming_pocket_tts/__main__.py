@@ -57,24 +57,6 @@ async def main() -> None:
         ),
     )
     parser.add_argument(
-        "--normalize-volume",
-        action="store_true",
-        help=(
-            "Peak-normalize each generated clip so its loudest sample reaches "
-            "--normalize-target-db. Raises volume for quiet voice prompts without "
-            "clipping or distortion (default: off)."
-        ),
-    )
-    parser.add_argument(
-        "--normalize-target-db",
-        type=float,
-        default=-1.0,
-        help=(
-            "Target peak level in dBFS for --normalize-volume (default: -1.0). "
-            "Must be <= 0; closer to 0 is louder."
-        ),
-    )
-    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging",

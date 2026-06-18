@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-06-18
+
+### Changed
+- **Audio is now streamed as it is generated** instead of being buffered until the
+  whole clip is synthesized. The handler uses Pocket TTS's `generate_audio_stream`
+  and forwards each `AudioChunk` as it is decoded, so Home Assistant receives the
+  first audio after ~one chunk rather than after the full utterance. On CPU, Pocket
+  TTS runs at roughly real time, so buffering previously delayed all audio by the
+  clip's full duration and could trip Home Assistant's TTS timeout on long replies
+  (seen as a dropped connection mid-response and the voice satellite's LED/phase
+  state desyncing from the actual speech). Streaming fixes that and lets satellites
+  start playback — and show the "speaking" state — promptly. Generation is
+  serialized with a lock since Pocket TTS's streaming generator is not thread-safe
+  on a shared model.
+
+### Removed
+- **`normalize_volume` and `normalize_target_db` options.** Peak normalization
+  needed the whole clip up front (its global peak), which is incompatible with
+  streaming, and is no longer used. Clone from a clear, loud section of the source
+  recording for good output level. Remove these keys from your add-on config if
+  present.
+
 ## [1.1.0] - 2026-06-16
 
 ### Changed

@@ -1,10 +1,15 @@
 """Tests for wyoming_pocket_tts handler."""
 
-import numpy as np
+import asyncio
+from types import SimpleNamespace
+
+import torch
+from wyoming.audio import AudioChunk, AudioStart, AudioStop
+from wyoming.tts import Synthesize
 from wyoming_pocket_tts.handler import (
     PRESET_VOICES,
+    PocketTTSEventHandler,
     get_wyoming_info,
-    peak_normalize,
 )
 
 
@@ -35,24 +40,70 @@ def test_get_wyoming_info_empty_voices():
     assert len(info.tts[0].voices) == 0
 
 
-def test_peak_normalize_reaches_target_without_clipping():
-    quiet = np.array([0.05, -0.1, 0.08, -0.03], dtype=np.float32)
-    out = peak_normalize(quiet, -1.0)
-    peak = float(np.max(np.abs(out)))
-    expected = 10.0 ** (-1.0 / 20.0)
-    assert peak == np.float32(expected) or abs(peak - expected) < 1e-6
-    assert peak < 1.0  # never clips
+class _FakeModel:
+    """Minimal stand-in for TTSModel that streams a few fixed audio chunks."""
+
+    sample_rate = 24000
+
+    def __init__(self, num_chunks=3, chunk_samples=4):
+        self._num_chunks = num_chunks
+        self._chunk_samples = chunk_samples
+        self.stream_calls = 0
+
+    def generate_audio_stream(self, voice_state, text, **kwargs):
+        self.stream_calls += 1
+        for _ in range(self._num_chunks):
+            # torch.Tensor of float samples in [-1, 1], like the real model yields.
+            yield torch.full((self._chunk_samples,), 0.5, dtype=torch.float32)
 
 
-def test_peak_normalize_is_pure_scaling():
-    # Every non-zero sample is multiplied by the same factor -> lossless.
-    sig = np.array([0.05, -0.1, 0.08, -0.03], dtype=np.float64)
-    out = peak_normalize(sig, -3.0)
-    ratios = out[sig != 0] / sig[sig != 0]
-    assert np.allclose(ratios, ratios[0])
+class _RecordingHandler(PocketTTSEventHandler):
+    """Handler whose write_event records events instead of touching a socket."""
+
+    def __init__(self, model):
+        # Bypass AsyncEventHandler.__init__ (needs a reader/writer); set only
+        # what handle_event uses.
+        self.wyoming_info = get_wyoming_info(["alba"])
+        self.cli_args = SimpleNamespace(voice="alba", voices_dir="/nonexistent")
+        self.model = model
+        self.voice_states = {"alba": object()}
+        self.written = []
+
+    async def write_event(self, event):
+        self.written.append(event)
 
 
-def test_peak_normalize_silent_input_unchanged():
-    silent = np.zeros(8, dtype=np.float32)
-    out = peak_normalize(silent, -1.0)
-    assert np.array_equal(out, silent)
+def _run(coro):
+    return asyncio.run(coro)
+
+
+def test_synthesize_streams_chunks_in_order():
+    model = _FakeModel(num_chunks=3, chunk_samples=4)
+    handler = _RecordingHandler(model)
+
+    result = _run(handler.handle_event(Synthesize(text="hello there").event()))
+
+    assert result is True
+    assert model.stream_calls == 1
+    # AudioStart, then one AudioChunk per streamed chunk, then AudioStop.
+    assert AudioStart.is_type(handler.written[0].type)
+    assert AudioStop.is_type(handler.written[-1].type)
+    chunk_events = [e for e in handler.written if AudioChunk.is_type(e.type)]
+    assert len(chunk_events) == 3
+    # 4 float samples -> 4 * 2 bytes (16-bit) per chunk.
+    for e in chunk_events:
+        assert len(AudioChunk.from_event(e).audio) == 4 * 2
+
+
+def test_empty_text_sends_clean_empty_response():
+    model = _FakeModel()
+    handler = _RecordingHandler(model)
+
+    result = _run(handler.handle_event(Synthesize(text="   ").event()))
+
+    assert result is True
+    # No generation attempted, but HA still gets a valid start/stop framing.
+    assert model.stream_calls == 0
+    assert AudioStart.is_type(handler.written[0].type)
+    assert AudioStop.is_type(handler.written[-1].type)
+    assert not [e for e in handler.written if AudioChunk.is_type(e.type)]
