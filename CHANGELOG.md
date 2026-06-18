@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-06-18
+
+### Added
+- Multi-language support via the `--language` flag and Home Assistant add-on
+  `language` option. The default remains `en` for fully backward-compatible
+  English behavior.
+- Supported languages from Pocket TTS 2.1.0: English (`en`/`english`), French
+  (`fr`/`french`, `french_24l`), German (`de`/`german`, `german_24l`),
+  Portuguese (`pt`/`portuguese`, `portuguese_24l`), Italian (`it`/`italian`,
+  `italian_24l`), and Spanish (`es`/`spanish`, `spanish_24l`).
+- Expanded preset voice catalog from Pocket TTS 2.1.0.
+
+### Notes
+- English voice cloning behavior is unchanged and remains fully supported.
+- Custom voice samples are loaded through the selected language model, matching
+  Pocket TTS's current API. Pocket TTS 2.1.0 includes cloning-capable weight
+  paths for every listed language config; if gated cloning weights cannot be
+  downloaded, preset voices continue to work and custom voices fall back to a
+  preset with a warning.
+- Rocky cloning was smoke-tested locally with HF access for English, Spanish,
+  French, German, Portuguese, and Italian.
+
 ## [1.2.0] - 2026-06-18
 
 ### Changed

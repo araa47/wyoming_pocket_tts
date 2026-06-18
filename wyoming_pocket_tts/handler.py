@@ -31,17 +31,149 @@ def _generation_lock() -> "asyncio.Lock":
 # Pocket TTS preset voices
 PRESET_VOICES = [
     "alba",
-    "marius",
-    "javert",
-    "jean",
-    "fantine",
+    "giovanni",
+    "lola",
+    "juergen",
+    "rafael",
+    "estelle",
+    "anna",
+    "azelma",
+    "bill_boerst",
+    "caro_davy",
+    "charles",
     "cosette",
     "eponine",
-    "azelma",
+    "eve",
+    "fantine",
+    "george",
+    "jane",
+    "jean",
+    "javert",
+    "marius",
+    "mary",
+    "michael",
+    "paul",
+    "peter_yearsley",
+    "stuart_bell",
+    "vera",
 ]
+
+PRESET_VOICE_LANGUAGES: dict[str, str] = {
+    "alba": "english",
+    "giovanni": "italian",
+    "lola": "spanish",
+    "juergen": "german",
+    "rafael": "portuguese",
+    "estelle": "french",
+    "anna": "english",
+    "azelma": "english",
+    "bill_boerst": "english",
+    "caro_davy": "english",
+    "charles": "english",
+    "cosette": "english",
+    "eponine": "english",
+    "eve": "english",
+    "fantine": "english",
+    "george": "english",
+    "jane": "english",
+    "jean": "english",
+    "javert": "english",
+    "marius": "english",
+    "mary": "english",
+    "michael": "english",
+    "paul": "english",
+    "peter_yearsley": "english",
+    "stuart_bell": "english",
+    "vera": "english",
+}
+
+DEFAULT_PRESET_BY_LANGUAGE: dict[str, str] = {
+    "english": "alba",
+    "french": "estelle",
+    "french_24l": "estelle",
+    "german": "juergen",
+    "german_24l": "juergen",
+    "portuguese": "rafael",
+    "portuguese_24l": "rafael",
+    "italian": "giovanni",
+    "italian_24l": "giovanni",
+    "spanish": "lola",
+    "spanish_24l": "lola",
+}
+
+
+def preset_voices_for_language(language: "str | None") -> list[str]:
+    """Return preset voices that match the selected Pocket TTS language."""
+    normalized_language = normalize_language(language)
+    base_language = normalized_language.removesuffix("_24l")
+    return [
+        voice
+        for voice in PRESET_VOICES
+        if PRESET_VOICE_LANGUAGES.get(voice) == base_language
+    ]
+
+
+def default_preset_for_language(language: "str | None") -> str:
+    """Return Pocket TTS's default preset voice for the selected language."""
+    return DEFAULT_PRESET_BY_LANGUAGE.get(normalize_language(language), "alba")
+
 
 # Audio formats accepted for custom voice samples in the voices directory.
 AUDIO_EXTENSIONS = {".wav", ".mp3", ".ogg", ".flac", ".m4a"}
+
+SUPPORTED_LANGUAGES: dict[str, str] = {
+    "en": "english",
+    "english": "english",
+    "fr": "french",
+    "french": "french",
+    "fr_24l": "french_24l",
+    "french_24l": "french_24l",
+    "de": "german",
+    "german": "german",
+    "de_24l": "german_24l",
+    "german_24l": "german_24l",
+    "pt": "portuguese",
+    "portuguese": "portuguese",
+    "pt_24l": "portuguese_24l",
+    "portuguese_24l": "portuguese_24l",
+    "it": "italian",
+    "italian": "italian",
+    "it_24l": "italian_24l",
+    "italian_24l": "italian_24l",
+    "es": "spanish",
+    "spanish": "spanish",
+    "es_24l": "spanish_24l",
+    "spanish_24l": "spanish_24l",
+}
+
+WYOMING_LANGUAGE_CODES: dict[str, str] = {
+    "english": "en",
+    "french": "fr",
+    "french_24l": "fr",
+    "german": "de",
+    "german_24l": "de",
+    "portuguese": "pt",
+    "portuguese_24l": "pt",
+    "italian": "it",
+    "italian_24l": "it",
+    "spanish": "es",
+    "spanish_24l": "es",
+}
+
+DEFAULT_LANGUAGE = "en"
+
+
+def normalize_language(language: "str | None") -> str:
+    """Return the Pocket TTS language name for a user-supplied language value."""
+    if not language:
+        return SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE]
+    normalized = language.strip().lower().replace("-", "_")
+    return SUPPORTED_LANGUAGES.get(normalized, normalized)
+
+
+def wyoming_language_code(language: str) -> str:
+    """Return the Wyoming/Home Assistant language code for a Pocket TTS language."""
+    return WYOMING_LANGUAGE_CODES.get(normalize_language(language), DEFAULT_LANGUAGE)
 
 
 def find_custom_voice_file(voices_dir: str, name: str) -> "Path | None":
@@ -80,6 +212,14 @@ def load_voice(model: TTSModel, name: str, voices_dir: str):
             return None
     custom_file = find_custom_voice_file(voices_dir, name)
     if custom_file is not None:
+        if getattr(model, "has_voice_cloning", True) is False:
+            _LOGGER.warning(
+                "Custom voice '%s' requires Pocket TTS voice cloning weights, but "
+                "the loaded language model does not have them available. Accept the "
+                "Kyutai Pocket TTS model terms and configure HF_TOKEN, or use a preset voice.",
+                name,
+            )
+            return None
         try:
             return model.get_state_for_audio_prompt(str(custom_file))  # type: ignore[arg-type]
         except Exception as e:
@@ -109,6 +249,20 @@ class PocketTTSEventHandler(AsyncEventHandler):
     def _load_voice(self, voice_name: str):
         """Load a voice (preset or custom) on-demand."""
         return load_voice(self.model, voice_name, self.cli_args.voices_dir)
+
+    def _resolve_voice_name(self, synthesize: Synthesize) -> str:
+        voice_name = self.cli_args.voice
+        if synthesize.voice and synthesize.voice.name:
+            voice_name = synthesize.voice.name
+        elif synthesize.voice and synthesize.voice.speaker:
+            voice_name = synthesize.voice.speaker
+
+        return voice_name
+
+    def _fallback_voice_name(self) -> str:
+        if self.cli_args.voice in PRESET_VOICES:
+            return self.cli_args.voice
+        return default_preset_for_language(self.cli_args.language)
 
     async def _iter_audio_chunks(self, voice_state, text: str):
         """Yield 16-bit PCM byte chunks from Pocket TTS as they are generated.
@@ -151,14 +305,13 @@ class PocketTTSEventHandler(AsyncEventHandler):
                 synthesize.voice,
             )
 
-            # Determine which voice to use
-            voice_name = self.cli_args.voice  # default
-            if synthesize.voice and synthesize.voice.name:
-                voice_name = synthesize.voice.name
-            elif synthesize.voice and synthesize.voice.speaker:
-                voice_name = synthesize.voice.speaker
+            voice_name = self._resolve_voice_name(synthesize)
 
-            _LOGGER.info("Generating speech with voice: %s", voice_name)
+            _LOGGER.info(
+                "Generating speech with voice: %s, language: %s",
+                voice_name,
+                self.cli_args.language,
+            )
 
             # Get voice state (preset or custom), loading on-demand if not preloaded.
             voice_state = self.voice_states.get(voice_name)
@@ -167,19 +320,20 @@ class PocketTTSEventHandler(AsyncEventHandler):
                 voice_state = self._load_voice(voice_name)
                 if voice_state is not None:
                     self.voice_states[voice_name] = voice_state
-                elif voice_name != self.cli_args.voice:
-                    # Unknown voice - fall back to the configured default.
-                    _LOGGER.warning(
-                        "Voice '%s' not found, using default: %s",
-                        voice_name,
-                        self.cli_args.voice,
-                    )
-                    voice_name = self.cli_args.voice
-                    voice_state = self.voice_states.get(voice_name)
-                    if voice_state is None:
-                        voice_state = self._load_voice(voice_name)
-                        if voice_state is not None:
-                            self.voice_states[voice_name] = voice_state
+                else:
+                    fallback_voice = self._fallback_voice_name()
+                    if voice_name != fallback_voice:
+                        _LOGGER.warning(
+                            "Voice '%s' not found or unavailable, using fallback preset: %s",
+                            voice_name,
+                            fallback_voice,
+                        )
+                        voice_name = fallback_voice
+                        voice_state = self.voice_states.get(voice_name)
+                        if voice_state is None:
+                            voice_state = self._load_voice(voice_name)
+                            if voice_state is not None:
+                                self.voice_states[voice_name] = voice_state
 
             if voice_state is None:
                 _LOGGER.error(
@@ -235,9 +389,10 @@ class PocketTTSEventHandler(AsyncEventHandler):
         return True
 
 
-def get_wyoming_info(voices: list[str]) -> Info:
+def get_wyoming_info(voices: list[str], language: str = DEFAULT_LANGUAGE) -> Info:
     """Create Wyoming info describing available TTS voices."""
     tts_voices = []
+    language_code = wyoming_language_code(language)
 
     kyutai_attribution = Attribution(
         name="Kyutai",
@@ -252,7 +407,7 @@ def get_wyoming_info(voices: list[str]) -> Info:
                 installed=True,
                 description=f"Pocket TTS voice: {voice}",
                 version=None,
-                languages=["en"],  # Pocket TTS is English-only
+                languages=[language_code],
             )
         )
 

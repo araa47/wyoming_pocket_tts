@@ -36,9 +36,18 @@ In the add-on Configuration tab:
 |--------|-------------|
 | `hf_token` | Your HuggingFace token (required) |
 | `voice` | Default voice: alba, jean, fantine, etc. |
+| `language` | TTS language. Default `en`. Supported: `en`, `fr`, `de`, `pt`, `it`, `es`, `fr_24l`, `de_24l`, `pt_24l`, `italian_24l`, `spanish_24l` |
 | `voices_dir` | Path for custom voice samples |
 | `preload_voices` | Comma-separated voice names to preload, e.g. `rocky` or `rocky,alba` (empty = only the default `voice`; `all` = every voice, most RAM). Non-preloaded voices load on first use |
 | `debug` | Enable verbose logging |
+
+> **Language note:** English (`en`) keeps the existing voice cloning behavior.
+> Custom voice samples are loaded through the selected Pocket TTS language model.
+> Pocket TTS 2.1.0 includes cloning-capable weight paths for every listed language
+> config. If those gated weights are unavailable, preset voices continue to work
+> and custom voices fall back to a preset with a warning.
+> Rocky cloning has been smoke-tested locally with HF access for English,
+> Spanish, French, German, Portuguese, and Italian.
 
 > **Tip:** Pocket TTS output volume follows the loudness of your voice prompt — a
 > quiet cloning sample yields quiet speech that sounds weak on a speaker even at
