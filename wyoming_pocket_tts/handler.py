@@ -1,9 +1,9 @@
 """Wyoming event handler for Pocket TTS."""
 
+import asyncio
 import logging
 from pathlib import Path
 
-import numpy as np
 from pocket_tts import TTSModel
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.event import Event
@@ -13,19 +13,19 @@ from wyoming.tts import Synthesize
 
 _LOGGER = logging.getLogger(__name__)
 
+# Process-wide lock serializing generation on the shared TTS model. Pocket TTS's
+# streaming generator is not thread-safe on a shared model instance, so concurrent
+# requests (e.g. multiple satellites) must take turns. Created lazily on the
+# running loop the first time it is needed.
+_GENERATION_LOCK: "asyncio.Lock | None" = None
 
-def peak_normalize(samples: "np.ndarray", target_db: float) -> "np.ndarray":
-    """Scale ``samples`` so the loudest sample reaches ``target_db`` dBFS.
 
-    Pure amplitude scaling by a single factor: it is lossless and never clips
-    (the result peaks at exactly the target, which is <= 0 dBFS). Silent input
-    is returned unchanged. ``target_db`` should be <= 0.
-    """
-    peak = float(np.max(np.abs(samples)))
-    if peak <= 0.0:
-        return samples
-    target = 10.0 ** (target_db / 20.0)
-    return samples * (target / peak)
+def _generation_lock() -> "asyncio.Lock":
+    """Return the process-wide generation lock, creating it on first use."""
+    global _GENERATION_LOCK
+    if _GENERATION_LOCK is None:
+        _GENERATION_LOCK = asyncio.Lock()
+    return _GENERATION_LOCK
 
 
 # Pocket TTS preset voices
@@ -110,6 +110,32 @@ class PocketTTSEventHandler(AsyncEventHandler):
         """Load a voice (preset or custom) on-demand."""
         return load_voice(self.model, voice_name, self.cli_args.voices_dir)
 
+    async def _iter_audio_chunks(self, voice_state, text: str):
+        """Yield 16-bit PCM byte chunks from Pocket TTS as they are generated.
+
+        ``generate_audio_stream`` is a blocking generator, so each step is pumped
+        in a worker thread. That keeps the event loop free to write the previous
+        chunk to the socket while the next one is being decoded, and lets Home
+        Assistant start playback after the first chunk instead of waiting for the
+        whole clip.
+        """
+        stream = self.model.generate_audio_stream(voice_state, text)
+
+        def next_chunk_bytes() -> "bytes | None":
+            # Pull and convert one chunk; runs in a worker thread. Returns None
+            # when the generator is exhausted. chunk is a torch.Tensor of float
+            # samples in [-1, 1] -> 16-bit PCM bytes.
+            chunk = next(stream, None)
+            if chunk is None:
+                return None
+            return (chunk.numpy() * 32767).astype("int16").tobytes()
+
+        while True:
+            audio_bytes = await asyncio.to_thread(next_chunk_bytes)
+            if audio_bytes is None:
+                break
+            yield audio_bytes
+
     async def handle_event(self, event: Event) -> bool:
         """Handle Wyoming events."""
         if Describe.is_type(event.type):
@@ -162,50 +188,46 @@ class PocketTTSEventHandler(AsyncEventHandler):
                 )
                 return True
 
-            # Generate audio
-            try:
-                audio_tensor = self.model.generate_audio(voice_state, synthesize.text)  # type: ignore[arg-type]
-                samples = audio_tensor.numpy()
+            text = (synthesize.text or "").strip()
+            sample_rate = self.model.sample_rate
+            sample_width = 2  # 16-bit
+            channels = 1  # mono
 
-                # Optional peak normalization. Pocket TTS output level tracks the
-                # loudness of the voice prompt, so a quiet sample produces quiet
-                # speech that sounds weak on a speaker even at full volume. This
-                # scales the whole clip by a single factor so its loudest sample
-                # just reaches the target ceiling -- lossless and never clipping,
-                # so it raises volume without adding distortion.
-                if getattr(self.cli_args, "normalize_volume", False):
-                    samples = peak_normalize(samples, self.cli_args.normalize_target_db)
-
-                audio_bytes = (samples * 32767).astype("int16").tobytes()
-
-                # Send audio via Wyoming protocol
-                sample_rate = self.model.sample_rate
-                sample_width = 2  # 16-bit
-                channels = 1  # mono
-
+            if not text:
+                # Nothing to say: still send a well-formed (empty) audio response
+                # so Home Assistant's pipeline completes cleanly.
                 await self.write_event(
                     AudioStart(
-                        rate=sample_rate,
-                        width=sample_width,
-                        channels=channels,
+                        rate=sample_rate, width=sample_width, channels=channels
                     ).event()
                 )
+                await self.write_event(AudioStop().event())
+                return True
 
-                # Send audio in chunks (4096 samples per chunk)
-                chunk_size = 4096 * sample_width * channels
-                for i in range(0, len(audio_bytes), chunk_size):
-                    chunk = audio_bytes[i : i + chunk_size]
+            # Stream audio as it is produced, so Home Assistant can begin playback
+            # while the rest is still being synthesized. Pocket TTS runs at ~real
+            # time on CPU, so buffering the whole clip first delayed all audio by
+            # its full duration and could trip HA's TTS timeout on long replies.
+            try:
+                async with _generation_lock():
                     await self.write_event(
-                        AudioChunk(
-                            audio=chunk,
-                            rate=sample_rate,
-                            width=sample_width,
-                            channels=channels,
+                        AudioStart(
+                            rate=sample_rate, width=sample_width, channels=channels
                         ).event()
                     )
-
-                await self.write_event(AudioStop().event())
-                _LOGGER.info("Audio generation complete")
+                    chunk_count = 0
+                    async for audio_bytes in self._iter_audio_chunks(voice_state, text):
+                        await self.write_event(
+                            AudioChunk(
+                                audio=audio_bytes,
+                                rate=sample_rate,
+                                width=sample_width,
+                                channels=channels,
+                            ).event()
+                        )
+                        chunk_count += 1
+                    await self.write_event(AudioStop().event())
+                _LOGGER.info("Streamed %d audio chunk(s)", chunk_count)
 
             except Exception as e:
                 _LOGGER.exception("Error generating audio: %s", e)
