@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-06-21
+
+### Fixed
+- Add-on disappearing from the Home Assistant Add-on Store with the error
+  "App has been removed from the repository it was installed from." The v1.4.0
+  `config.yaml` introduced an unsupported `options_description` key and used the
+  invalid `select(...)` schema type, both of which fail Supervisor validation
+  and cause the add-on to be dropped from the repository.
+  - Removed the unsupported `options_description` block (option docs already
+    live in `DOCS.md`).
+  - Changed the `voice` and `language` dropdowns from `select(...)` to the
+    correct add-on schema type `list(...)`.
+
 ## [1.4.0] - 2026-06-18
 
 ### Changed
