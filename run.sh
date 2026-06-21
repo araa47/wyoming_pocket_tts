@@ -116,11 +116,34 @@ send_discovery() {
 
     # Check if running in Home Assistant (supervisor API available)
     if [ -n "$SUPERVISOR_TOKEN" ]; then
-        local hostname
+        local hostname discovery_host ipv4
         # Get hostname and convert underscores to hyphens for valid DNS name
         # Home Assistant uses {REPO}_{SLUG} but DNS requires hyphens
         hostname=$(hostname | tr '_' '-')
-        echo "Sending discovery for host: ${hostname}:10200"
+
+        # Prefer advertising our IPv4 address over the hostname. The hassio
+        # network is dual-stack, so the add-on hostname resolves to BOTH an IPv4
+        # and an IPv6 (ULA) address. Home Assistant Core resolves the IPv6 first;
+        # on hosts with IPv6 disabled (the common case) that address is
+        # unroutable, so Core's connection attempt hangs on a dropped SYN and
+        # times out ("Unable to connect" -> the TTS entity stays stuck
+        # "Initialising"). Advertising the IPv4 address sidesteps the broken IPv6
+        # path entirely. Binding the server to IPv6 does NOT fix this, because the
+        # route itself is unreachable. Fall back to the hostname if we cannot
+        # determine an IPv4 address.
+        ipv4=$(hostname -i 2>/dev/null | tr ' ' '\n' \
+            | grep -E '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)' | head -n1)
+        if [ -z "$ipv4" ]; then
+            ipv4=$(getent ahostsv4 "$hostname" 2>/dev/null | awk '{print $1; exit}')
+        fi
+        if [ -n "$ipv4" ]; then
+            discovery_host="$ipv4"
+            echo "Advertising IPv4 address ${ipv4} for discovery (avoids unreachable IPv6 on IPv6-disabled hosts)"
+        else
+            discovery_host="$hostname"
+            echo "Could not determine IPv4 address; falling back to hostname ${hostname} for discovery"
+        fi
+        echo "Sending discovery for host: ${discovery_host}:10200"
 
         # Retry discovery up to 3 times
         local retry=0
@@ -130,7 +153,7 @@ send_discovery() {
             response=$(curl -s -X POST \
                 -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
                 -H "Content-Type: application/json" \
-                -d "{\"service\": \"wyoming\", \"config\": {\"uri\": \"tcp://${hostname}:10200\"}}" \
+                -d "{\"service\": \"wyoming\", \"config\": {\"uri\": \"tcp://${discovery_host}:10200\"}}" \
                 "http://supervisor/discovery" 2>&1)
 
             if echo "$response" | grep -q '"result".*"ok"'; then
