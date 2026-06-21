@@ -3,7 +3,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration
 
 name: Wyoming Pocket TTS
-version: 1.4.1
+version: 1.4.2
 slug: wyoming_pocket_tts
 description: >-
     Fast, local text-to-speech with voice cloning using Kyutai Pocket TTS.
@@ -38,23 +38,27 @@ homeassistant_api: false
 map:
     - share:rw # For custom voice samples in /share/tts-voices
 
-# Configuration options exposed in UI
+# Configuration options exposed in UI.
+# Voice names go in `voices` — type them out (see the Documentation tab or the
+# field help for the full built-in list, or use a custom filename without its
+# extension). Each listed voice is preloaded for fast first response and is the
+# only set advertised to Home Assistant. Leave `voices` empty to fall back to
+# advertising every built-in + custom voice (loaded on demand).
 options:
-    voice: alba
     language: en
+    voices:
+        - alba
     voices_dir: /share/tts-voices
-    preload_voices: []
-    debug: false
     hf_token: ''
+    debug: false
 
 schema:
-    voice: list(alba|anna|azelma|bill_boerst|caro_davy|charles|cosette|eponine|eve|fantine|george|jane|jean|javert|marius|mary|michael|paul|peter_yearsley|stuart_bell|vera|estelle|juergen|rafael|giovanni|lola)
     language: list(en|fr|de|pt|it|es|fr_24l|de_24l|pt_24l|it_24l|es_24l)
-    voices_dir: str
-    preload_voices:
+    voices:
         - str
-    debug: bool
+    voices_dir: str
     hf_token: password?
+    debug: bool
 
 # Environment
 environment:

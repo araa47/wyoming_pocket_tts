@@ -15,6 +15,7 @@ from wyoming_pocket_tts.handler import (
     get_wyoming_info,
     load_voice,
     normalize_language,
+    plan_voices,
 )
 
 
@@ -60,6 +61,27 @@ def test_default_preset_for_language():
 def test_get_wyoming_info_empty_voices():
     info = get_wyoming_info([])
     assert len(info.tts[0].voices) == 0
+
+
+def test_plan_voices_configured_advertises_only_those():
+    to_preload, advertise, default = plan_voices(["rocky", "alba"], ["rocky"], "en")
+    assert to_preload == ["rocky", "alba"]
+    assert advertise == ["rocky", "alba"]  # only configured, not all presets
+    assert default == "rocky"
+
+
+def test_plan_voices_dedups_and_strips():
+    to_preload, advertise, default = plan_voices([" rocky ", "rocky", "alba"], [], "en")
+    assert to_preload == ["rocky", "alba"]
+    assert default == "rocky"
+
+
+def test_plan_voices_empty_advertises_all_and_defaults_to_language_preset():
+    to_preload, advertise, default = plan_voices([], ["rocky"], "spanish")
+    assert default == "lola"  # spanish default preset
+    assert to_preload == ["lola"]  # only the default is preloaded
+    assert "rocky" in advertise  # custom file advertised
+    assert set(PRESET_VOICES).issubset(set(advertise))  # all presets advertised
 
 
 class _FakeModel:

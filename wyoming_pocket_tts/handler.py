@@ -197,6 +197,36 @@ def list_custom_voice_names(voices_dir: str) -> list[str]:
     ]
 
 
+def plan_voices(
+    configured: list[str],
+    custom_voice_names: list[str],
+    language: "str | None",
+) -> tuple[list[str], list[str], str]:
+    """Decide which voices to preload, which to advertise, and the default.
+
+    Returns ``(to_preload, to_advertise, default_voice)``.
+
+    When ``configured`` is non-empty the add-on operates in the simple, explicit
+    mode the config UI promotes: exactly those voices are preloaded (fast first
+    response) and they are the only ones advertised to Home Assistant. The first
+    one is the default used when a request does not name a voice.
+
+    When ``configured`` is empty we keep the original behaviour: advertise every
+    built-in preset plus any custom files (loaded on demand), preloading only the
+    default preset for the language.
+    """
+    fallback = default_preset_for_language(language)
+
+    # De-dup while preserving order.
+    configured = list(dict.fromkeys(v.strip() for v in configured if v.strip()))
+
+    if configured:
+        return configured, configured, configured[0]
+
+    advertise = list(dict.fromkeys(PRESET_VOICES + custom_voice_names))
+    return [fallback], advertise, fallback
+
+
 def load_voice(model: TTSModel, name: str, voices_dir: str):
     """Load a single voice state by name (preset or custom file). Returns state or None.
 
