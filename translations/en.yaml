@@ -1,0 +1,39 @@
+---
+# Home Assistant add-on option names/descriptions shown in the Configuration tab.
+# https://developers.home-assistant.io/docs/add-ons/configuration#translating-add-on-options
+configuration:
+    language:
+        name: Language
+        description: >-
+            Pocket TTS language model to load. Pick the language that matches your
+            text and any custom voice samples. Supported: en, fr, de, pt, it, es
+            (plus the 24-layer previews fr_24l, de_24l, pt_24l, it_24l, es_24l).
+    voices:
+        name: Voices to load
+        description: >-
+            Voices to preload (for fast first response) and advertise to Home
+            Assistant. These are the ONLY voices Home Assistant will see. Type one
+            name per entry. Built-in English: alba, anna, azelma, bill_boerst,
+            caro_davy, charles, cosette, eponine, eve, fantine, george, jane, jean,
+            javert, marius, mary, michael, paul, peter_yearsley, stuart_bell, vera.
+            Other languages: estelle (fr), juergen (de), rafael (pt), giovanni (it),
+            lola (es). Custom voice: drop a sample (e.g. rocky.ogg) in the voices
+            folder and type the filename WITHOUT its extension (rocky). Custom
+            voices need a Hugging Face token. Leave empty to advertise every
+            built-in and custom voice (loaded on demand instead of preloaded).
+    voices_dir:
+        name: Custom voices folder
+        description: >-
+            Folder holding custom voice sample files (.ogg, .wav, .mp3, .flac,
+            .m4a). Keep /share/tts-voices for Home Assistant add-on installs.
+    hf_token:
+        name: Hugging Face token
+        description: >-
+            Required only for custom (cloned) voices. Accept the Kyutai Pocket TTS
+            model terms on huggingface.co, then create a read token and paste it
+            here. Built-in voices work without a token.
+    debug:
+        name: Debug logging
+        description: Show verbose logs for troubleshooting.
+network:
+    10200/tcp: Wyoming protocol

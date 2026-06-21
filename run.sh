@@ -5,36 +5,51 @@ set -e
 # Read options from Home Assistant add-on config
 CONFIG_PATH=/data/options.json
 
-# Parse config with bashio if available, otherwise use jq
+# `voices` is a list; read it as a comma-separated string with jq. Older configs
+# may still carry the legacy `voice`/`preload_voices` keys, so fall back to those
+# when `voices` is empty (the server applies them only in that case).
+read_voices() {
+    jq -r 'if (.voices | type) == "array" then (.voices | join(","))
+           elif (.voices | type) == "string" then .voices
+           else "" end' "$CONFIG_PATH" 2>/dev/null
+}
+read_preload() {
+    jq -r 'if (.preload_voices | type) == "array" then (.preload_voices | join(","))
+           else (.preload_voices // "") end' "$CONFIG_PATH" 2>/dev/null
+}
+
 if command -v bashio &> /dev/null; then
-    VOICE=$(bashio::config 'voice')
     LANGUAGE=$(bashio::config 'language')
     VOICES_DIR=$(bashio::config 'voices_dir')
     DEBUG=$(bashio::config 'debug')
     HF_TOKEN=$(bashio::config 'hf_token')
-    PRELOAD_VOICES=$(jq -r 'if (.preload_voices | type) == "array" then .preload_voices | join(",") else .preload_voices // "" end' "$CONFIG_PATH")
+    VOICES=$(read_voices)
+    LEGACY_VOICE=$(jq -r '.voice // ""' "$CONFIG_PATH" 2>/dev/null)
+    LEGACY_PRELOAD=$(read_preload)
 else
     # Fallback to jq for standalone Docker
     if [ -f "$CONFIG_PATH" ]; then
-        VOICE=$(jq -r '.voice // "alba"' "$CONFIG_PATH")
         LANGUAGE=$(jq -r '.language // "en"' "$CONFIG_PATH")
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
-        PRELOAD_VOICES=$(jq -r 'if (.preload_voices | type) == "array" then .preload_voices | join(",") else .preload_voices // "" end' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
         HF_TOKEN=$(jq -r '.hf_token // ""' "$CONFIG_PATH")
+        VOICES=$(read_voices)
+        LEGACY_VOICE=$(jq -r '.voice // ""' "$CONFIG_PATH")
+        LEGACY_PRELOAD=$(read_preload)
     else
         # Defaults for standalone usage
-        VOICE="${VOICE:-alba}"
         LANGUAGE="${LANGUAGE:-en}"
         VOICES_DIR="${VOICES_DIR:-/share/tts-voices}"
-        PRELOAD_VOICES="${PRELOAD_VOICES:-}"
         DEBUG="${DEBUG:-false}"
         HF_TOKEN="${HF_TOKEN:-}"
+        VOICES="${VOICES:-alba}"
+        LEGACY_VOICE="${LEGACY_VOICE:-}"
+        LEGACY_PRELOAD="${LEGACY_PRELOAD:-}"
     fi
 fi
 
 # Export HuggingFace token if provided
-if [ -n "$HF_TOKEN" ]; then
+if [ -n "$HF_TOKEN" ] && [ "$HF_TOKEN" != "null" ]; then
     export HF_TOKEN
     echo "HuggingFace token configured"
 fi
@@ -46,17 +61,21 @@ mkdir -p "$VOICES_DIR"
 ARGS=(
     --host "0.0.0.0"
     --port "10200"
-    --voice "$VOICE"
     --language "$LANGUAGE"
     --voices-dir "$VOICES_DIR"
 )
 
-# Backwards compatibility: preload_voices used to be a boolean (true = all voices).
-case "$PRELOAD_VOICES" in
-  true | True | TRUE) PRELOAD_VOICES="all" ;;
-  false | False | FALSE | null) PRELOAD_VOICES="" ;;
+[ "$VOICES" = "null" ] && VOICES=""
+ARGS+=(--voices "$VOICES")
+
+# Legacy passthrough (used by the server only when --voices is empty).
+[ "$LEGACY_VOICE" = "null" ] && LEGACY_VOICE=""
+[ -n "$LEGACY_VOICE" ] && ARGS+=(--voice "$LEGACY_VOICE")
+case "$LEGACY_PRELOAD" in
+  true | True | TRUE) LEGACY_PRELOAD="all" ;;
+  false | False | FALSE | null) LEGACY_PRELOAD="" ;;
 esac
-ARGS+=(--preload-voices "$PRELOAD_VOICES")
+[ -n "$LEGACY_PRELOAD" ] && ARGS+=(--preload-voices "$LEGACY_PRELOAD")
 
 if [ "$DEBUG" = "true" ]; then
     ARGS+=(--debug)
@@ -65,10 +84,9 @@ fi
 echo "========================================"
 echo "Wyoming Pocket TTS Server"
 echo "========================================"
-echo "Voice: $VOICE"
 echo "Language: $LANGUAGE"
+echo "Voices: ${VOICES:-<all built-in + custom (on demand)>}"
 echo "Voices dir: $VOICES_DIR"
-echo "Preload voices: $PRELOAD_VOICES"
 echo "Debug: $DEBUG"
 echo "========================================"
 

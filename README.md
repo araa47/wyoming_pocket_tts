@@ -38,7 +38,7 @@
    https://github.com/araa47/wyoming_pocket_tts
    ```
 3. Install **Wyoming Pocket TTS**
-4. In **Configuration**, choose a built-in `voice` and `language`
+4. In **Configuration**, choose a `language` and set `voices`
 5. Start the add-on
 6. Add the discovered Wyoming device in **Settings > Devices & Services**
 
@@ -62,7 +62,7 @@ docker run -d \
 
 ```bash
 uv sync
-uv run python -m wyoming_pocket_tts --voice alba --debug
+uv run python -m wyoming_pocket_tts --voices alba --debug
 ```
 
 ## Requirements
@@ -78,12 +78,15 @@ uv run python -m wyoming_pocket_tts --voice alba --debug
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `voice` | `alba` | Default built-in voice, selected from a dropdown in the add-on UI |
 | `language` | `en` | TTS language/model, selected from a dropdown |
+| `voices` | `[alba]` | Voices to load. Each is **preloaded** (fast first response) and is the **only** set advertised to Home Assistant. Type a preset name or a custom sample's filename without extension (e.g. `rocky`). Leave empty to advertise every built-in + custom voice, loaded on demand |
 | `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
-| `preload_voices` | `[]` | Optional list of voice names to preload, one per line in the add-on UI. Leave empty to preload only `voice`; use `all` only on hosts with enough RAM |
+| `hf_token` | — | HuggingFace token (custom/cloned voices only) |
 | `debug` | `false` | Enable debug logging |
-| `hf_token` | — | HuggingFace token (voice cloning only) |
+
+> **Using only a custom voice?** Put `rocky.ogg` in `/share/tts-voices`, set
+> `hf_token`, set `voices` to `rocky`, pick the matching `language`, restart, then
+> reload the Wyoming integration. Only `rocky` will be offered to Home Assistant.
 
 ## Voices
 

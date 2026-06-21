@@ -12,7 +12,7 @@ This add-on runs [Pocket TTS](https://kyutai.org/tts), a lightweight TTS model t
 
 ## Setup
 
-### 1. Configure Built-in TTS
+### 1. Configure TTS
 
 Built-in voices work without a Hugging Face account or token.
 
@@ -20,12 +20,30 @@ In the add-on Configuration tab:
 
 | Option | Description |
 |--------|-------------|
-| `voice` | Default built-in voice. Start with `alba` for English, `estelle` for French, `juergen` for German, `rafael` for Portuguese, `giovanni` for Italian, or `lola` for Spanish |
 | `language` | TTS language/model to load. Default `en`. Supported: `en`, `fr`, `de`, `pt`, `it`, `es`, plus the 24-layer variants `fr_24l`, `de_24l`, `pt_24l`, `it_24l`, and `es_24l` |
-| `voices_dir` | Path for custom voice samples. Keep `/share/tts-voices` for Home Assistant add-on installs. Put `<voice_name>.ogg`, `.wav`, `.mp3`, `.flac`, or `.m4a` files here and use the filename without extension as the voice name |
-| `preload_voices` | Optional voice names to preload, one per line. Leave blank to preload only the default `voice`; use `all` only on hosts with enough RAM |
+| `voices` | The voices to load. Type one name per entry. Each listed voice is **preloaded** (fast first response) and is the **only** set advertised to Home Assistant. Use a preset name (see list below) or a custom sample's filename **without extension** (e.g. `rocky`). Leave empty to advertise every built-in + custom voice (loaded on demand) |
+| `voices_dir` | Folder for custom voice samples. Keep `/share/tts-voices` for Home Assistant add-on installs. Put `<name>.ogg`, `.wav`, `.mp3`, `.flac`, or `.m4a` files here and reference them as `<name>` |
+| `hf_token` | Hugging Face read token. Required only for custom (cloned) voices |
 | `debug` | Enable verbose logging |
-| `hf_token` | Optional Hugging Face read token. Required only for custom voice cloning |
+
+**Built-in preset names** — English: `alba`, `anna`, `azelma`, `bill_boerst`,
+`caro_davy`, `charles`, `cosette`, `eponine`, `eve`, `fantine`, `george`, `jane`,
+`jean`, `javert`, `marius`, `mary`, `michael`, `paul`, `peter_yearsley`,
+`stuart_bell`, `vera`. Other languages: `estelle` (fr), `juergen` (de),
+`rafael` (pt), `giovanni` (it), `lola` (es).
+
+**Built-in only** — set `language` and put one or more preset names in `voices`
+(e.g. `alba`). Done.
+
+**Custom (cloned) voice** — e.g. to use only your `rocky.ogg`:
+
+1. Put `rocky.ogg` in `/share/tts-voices` (see *Adding Custom Voices* below)
+2. Set `hf_token` (cloning requires it — see *Optional: Enable Voice Cloning*)
+3. Set `voices` to a single entry: `rocky` (filename without extension)
+4. Pick the matching `language`
+5. Start/restart the add-on, then reload the Wyoming integration
+
+Now only `rocky` is preloaded and offered to Home Assistant.
 
 > **Language note:** English (`en`) keeps the existing behavior.
 > Custom voice samples are loaded through the selected Pocket TTS language model.
@@ -81,14 +99,16 @@ Clone any voice from a short audio sample:
 1. Record 5-30 seconds of clear speech; 15-30 seconds works best
 2. Upload to `/share/tts-voices/` via Samba/SSH
 3. Name the file (e.g., `my_voice.wav`)
-4. Restart the add-on to load the new voice
-5. **Reload the Wyoming integration** to update the voice list:
+4. Add `my_voice` to the `voices` option (and set `hf_token`)
+5. Restart the add-on to load the new voice
+6. **Reload the Wyoming integration** to update the voice list:
    - Go to **Settings → Devices & Services**
    - Click on your **Pocket TTS** device under Wyoming Protocol
    - Click **⋮** menu → **Reload**
-6. Use `my_voice` as the voice name in automations
+7. Use `my_voice` as the voice name in automations
 
-> **Important**: Home Assistant caches the voice list. Without step 5, your new voice won't appear in the voice dropdown when configuring assistants.
+> **Important**: Home Assistant caches the voice list. Without step 6, your new
+> voice won't appear in the voice dropdown when configuring assistants.
 
 ### Recording Tips
 
@@ -131,7 +151,17 @@ data:
 
 ### Slow first response
 
-Each voice loads on first use (~2-3 seconds). Set `preload_voices` to your voice name(s) (e.g. `rocky`) for instant first responses without loading every voice into RAM.
+Voices listed in `voices` are preloaded, so the first response is instant. If you
+leave `voices` empty, voices load on first use (~2-3 seconds) instead — add the
+ones you use to `voices` to preload them.
+
+### Voice dropdown is empty / TTS entity unavailable
+
+Home Assistant must be able to reach the add-on over the Wyoming protocol. If the
+Wyoming integration shows "unable to connect" (entity `unavailable`), reload it:
+**Settings → Devices & Services → Wyoming Protocol → your Pocket TTS device →
+⋮ → Reload**. (Older versions bound IPv4 only and could be unreachable on
+dual-stack networks; this is fixed in 1.4.2+.)
 
 ### Custom voice not appearing in dropdown
 

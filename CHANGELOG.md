@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-06-21
+
+### Fixed
+- **Connectivity / empty voice list (IPv6).** The server bound only to IPv4
+  (`0.0.0.0`). Home Assistant's hassio network is dual-stack and Core now
+  resolves the add-on to its IPv6 address first, so the Wyoming connection failed
+  ("Unable to connect"), the TTS entity went `unavailable`, and **no voices
+  appeared in the voice dropdown**. The server now binds all interfaces (IPv4 and
+  IPv6).
+
+### Changed
+- Simplified voice configuration to a single **`voices`** list, replacing the
+  `voice`/`custom_voice`/`preload_voices` options. The voices you list are
+  preloaded (fast first response) and are the **only** voices advertised to Home
+  Assistant. Type preset names or a custom sample's filename without its
+  extension (e.g. `rocky`).
+  - Leave `voices` empty to keep the old behaviour: advertise every built-in and
+    custom voice, loaded on demand.
+  - Added a `translations/en.yaml` so the Configuration tab shows clear field
+    help (including the full preset list and how to use a custom voice).
+  - **Migration:** after updating, open the add-on Configuration tab, set
+    `voices` (e.g. `- rocky`), and Save. Old `voice`/`preload_voices` configs are
+    still honoured when `voices` is left empty.
+
 ## [1.4.1] - 2026-06-21
 
 ### Fixed
