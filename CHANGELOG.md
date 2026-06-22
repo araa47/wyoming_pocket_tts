@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-06-21
+
+### Fixed
+- **TTS entity stuck "Initialising" / "Unable to connect" (real IPv6 fix).** The
+  add-on advertised its **hostname** in Wyoming discovery. On the dual-stack
+  hassio network that hostname resolves to both an IPv4 and an IPv6 (ULA)
+  address, and Home Assistant Core resolves the **IPv6 first**. On hosts with
+  IPv6 disabled (the common case) that ULA is unroutable, so Core's connection
+  attempt hangs on a dropped SYN, times out after ~20 s ("Unable to connect"),
+  and the TTS entity never leaves "Initialising" — retrying forever. The 1.4.2
+  attempt to bind the server to IPv6 did **not** help, because the route itself
+  is unreachable, not the socket. The add-on now advertises its **IPv4 address**
+  in discovery (falling back to the hostname if it can't be determined), so Core
+  connects over IPv4 and never touches the broken IPv6 path. The dual-stack bind
+  from 1.4.2 is kept (harmless).
+  - **Migration:** after updating, if an existing "Wyoming"/"pocket-tts" device
+    is still stuck "Initialising", delete that integration entry and let the
+    add-on's fresh discovery re-add it (or add it manually pointing at the
+    add-on's IPv4 address, port `10200`).
+- Corrected the package version reported in the startup log (it was pinned at
+  `1.4.0` while the add-on was already on a later version).
+
 ## [1.4.2] - 2026-06-21
 
 ### Fixed
