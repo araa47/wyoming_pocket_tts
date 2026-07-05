@@ -1,6 +1,6 @@
 [project]
 name = "wyoming-pocket-tts"
-version = "1.4.4"
+version = "1.4.5"
 description = "Wyoming protocol server for Kyutai Pocket TTS with voice cloning"
 readme = "README.md"
 license = "MIT"
@@ -24,6 +24,10 @@ dependencies = [
     "wyoming>=1.5.0",
     "pocket-tts>=0.2.0",
     "numpy>=1.24.0",
+    # Not imported by this project directly, but pocket_tts.data.audio imports
+    # it lazily to decode non-WAV custom voice samples (mp3/ogg/flac). Do not
+    # remove: voice cloning from non-WAV files breaks without it (see v1.4.4).
+    "soundfile>=0.12.0",
 ]
 
 [project.optional-dependencies]
