@@ -103,9 +103,6 @@ Thumbs.db
 # Logs
 *.log
 
-# UV
-uv.lock
-
 # Misc
 .mutmut-cache
 profile.html

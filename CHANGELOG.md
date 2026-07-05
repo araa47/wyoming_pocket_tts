@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.4] - 2026-07-06
+
+### Changed
+- **Smaller Docker image.** Dropped audio system libraries that were never used
+  (`libportaudio2`, `libsndfile1` and their `-dev` builds — pocket-tts uses
+  neither portaudio nor libsndfile) plus `build-essential` from the builder
+  stage: every dependency ships prebuilt manylinux wheels for amd64 and aarch64.
+  Removed the unused `soundfile` Python dependency for the same reason.
+- **Much faster CI.** The `linux/arm64` image now builds on GitHub's free
+  native arm64 runners instead of QEMU emulation. Superseded PR runs are
+  cancelled automatically when new commits are pushed.
+- **Reproducible torch install.** The CPU-only torch install in the Docker
+  build is now pinned to the version in `uv.lock` (2.12.0) instead of floating
+  to the latest release.
+- Upgraded all GitHub Actions to current major versions and refreshed
+  pre-commit hook revisions (ruff, black, codespell).
+
+### Fixed
+- **`uv.lock` is now committed.** It was gitignored, yet CI pointed its uv
+  cache at `cache-dependency-glob: uv.lock` — the file never existed in CI, so
+  the cache key never worked and every CI run (and every contributor) resolved
+  dependencies fresh and unpinned. Tests now run against the locked versions.
+- The prek CI cache key referenced an environment variable that was never set
+  (`pythonLocation`), so the cache never keyed on the Python version. It now
+  hashes `.python-version` and `.pre-commit-config.yaml`.
+- Moved deprecated top-level ruff `select`/`ignore` settings to
+  `[tool.ruff.lint]`, and switched the pre-commit hook from the legacy `ruff`
+  alias to `ruff-check`.
+- Removed dead `load_custom_voices()` code left over from the pre-1.3 voice
+  handling.
+
 ## [1.4.3] - 2026-06-21
 
 ### Fixed
