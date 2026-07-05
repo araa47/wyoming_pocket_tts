@@ -66,8 +66,9 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install only runtime dependencies (no build tools, no uv).
 # nc: healthcheck/discovery probe; jq + curl: run.sh config parsing and
-# supervisor discovery. No audio system libraries are needed: pocket-tts
-# uses neither portaudio nor libsndfile.
+# supervisor discovery. No apt audio libraries are needed: pocket-tts does not
+# use portaudio, and non-WAV voice samples are decoded by the soundfile Python
+# package, whose wheel bundles its own libsndfile.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     jq \

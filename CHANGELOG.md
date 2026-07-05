@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.5] - 2026-07-06
+
+### Fixed
+- **Custom voice cloning from non-WAV samples broke in 1.4.4** ("soundfile is
+  required to read non-WAV audio files", configured voice fails to load and
+  falls back). 1.4.4 removed the `soundfile` dependency believing it unused —
+  it is not imported by this project, but `pocket_tts.data.audio` imports it
+  lazily to decode mp3/ogg/flac voice samples. The dependency is restored (its
+  wheel bundles libsndfile, so the image still needs no apt audio packages).
+  WAV samples and preset voices were unaffected.
+
 ## [1.4.4] - 2026-07-06
 
 ### Changed
