@@ -455,30 +455,3 @@ def get_wyoming_info(voices: list[str], language: str = DEFAULT_LANGUAGE) -> Inf
             )
         ]
     )
-
-
-def load_custom_voices(voices_dir: str, model: TTSModel) -> dict:
-    """Load custom voice samples from a directory."""
-    voice_states = {}
-    voices_path = Path(voices_dir)
-
-    if not voices_path.exists():
-        _LOGGER.warning("Voices directory does not exist: %s", voices_dir)
-        return voice_states
-
-    # Supported audio formats
-    audio_extensions = {".wav", ".mp3", ".ogg", ".flac", ".m4a"}
-
-    for audio_file in voices_path.iterdir():
-        if audio_file.suffix.lower() in audio_extensions:
-            voice_name = audio_file.stem
-            _LOGGER.info("Loading custom voice: %s from %s", voice_name, audio_file)
-            try:
-                voice_states[voice_name] = model.get_state_for_audio_prompt(
-                    str(audio_file)  # type: ignore[arg-type]
-                )
-                _LOGGER.info("Successfully loaded voice: %s", voice_name)
-            except Exception as e:
-                _LOGGER.exception("Failed to load voice %s: %s", voice_name, e)
-
-    return voice_states

@@ -10,14 +10,8 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install build dependencies for audio libraries
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libportaudio2 \
-    portaudio19-dev \
-    libsndfile1 \
-    libsndfile1-dev \
-    && rm -rf /var/lib/apt/lists/*
+# No apt build dependencies needed: every dependency (torch, numpy, scipy,
+# sentencepiece, ...) ships prebuilt manylinux wheels for amd64 and aarch64.
 
 WORKDIR /app
 
@@ -28,9 +22,10 @@ ENV UV_SYSTEM_PYTHON=1 \
 
 # Install CPU-only PyTorch first (avoids 15GB CUDA deps)
 # Then install project dependencies
+# Keep the torch pin in sync with uv.lock so images are reproducible.
 COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install torch --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install "torch==2.12.0" --index-url https://download.pytorch.org/whl/cpu && \
     uv pip install -r pyproject.toml
 
 # Copy project source and install (non-editable for smaller image)
@@ -69,10 +64,11 @@ FROM python:3.13-slim-bookworm
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install only runtime dependencies (no build tools, no uv)
+# Install only runtime dependencies (no build tools, no uv).
+# nc: healthcheck/discovery probe; jq + curl: run.sh config parsing and
+# supervisor discovery. No audio system libraries are needed: pocket-tts
+# uses neither portaudio nor libsndfile.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libportaudio2 \
-    libsndfile1 \
     netcat-openbsd \
     jq \
     curl \
