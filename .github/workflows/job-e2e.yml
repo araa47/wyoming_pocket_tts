@@ -44,6 +44,12 @@ jobs:
               if: steps.gate.outputs.enabled == 'true'
               run: uv sync --all-extras --dev --frozen
 
+            # The container driver is needed for gha layer caching (the default
+            # docker driver can't export a build cache).
+            - name: Set up Docker Buildx
+              if: steps.gate.outputs.enabled == 'true'
+              uses: docker/setup-buildx-action@v4
+
             - name: Build image
               if: steps.gate.outputs.enabled == 'true'
               uses: docker/build-push-action@v7
