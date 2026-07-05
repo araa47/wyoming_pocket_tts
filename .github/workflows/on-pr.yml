@@ -24,3 +24,9 @@ jobs:
         permissions:
             contents: read
             id-token: write
+
+    e2e:
+        uses: ./.github/workflows/job-e2e.yml
+        permissions:
+            contents: read
+        secrets: inherit
