@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.6] - 2026-07-06
+
+### Changed
+- Upgraded all Python dependencies to latest compatible versions (numpy
+  2.4.6->2.5.0, huggingface-hub 1.16.4->1.21.0, torch 2.12.0->2.12.1,
+  safetensors 0.7.0->0.8.0, scipy 1.17.1->1.18.0, and more).
+
 ## [1.4.5] - 2026-07-06
 
 ### Fixed
