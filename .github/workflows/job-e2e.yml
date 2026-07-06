@@ -1,0 +1,130 @@
+---
+name: e2e
+
+on:
+    workflow_call:
+        secrets:
+            HF_TOKEN:
+                required: false
+
+jobs:
+    e2e:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v7
+
+            # Fork PRs (and repos without the secret configured) can't clone the
+            # gated model. Skip gracefully rather than fail red.
+            - name: Check for HF token
+              id: gate
+              env:
+                  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+              run: |
+                  if [ -n "$HF_TOKEN" ]; then
+                      echo "enabled=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "enabled=false" >> "$GITHUB_OUTPUT"
+                      echo "::notice::HF_TOKEN not available — skipping container cloning E2E."
+                  fi
+
+            - name: Install uv
+              if: steps.gate.outputs.enabled == 'true'
+              uses: astral-sh/setup-uv@v8.3.0
+              with:
+                  enable-cache: true
+                  cache-dependency-glob: uv.lock
+
+            - name: Set up Python
+              if: steps.gate.outputs.enabled == 'true'
+              run: uv python install
+
+            - name: Install the project (Wyoming client + soundfile)
+              if: steps.gate.outputs.enabled == 'true'
+              run: uv sync --all-extras --dev --frozen
+
+            # The container driver is needed for gha layer caching (the default
+            # docker driver can't export a build cache).
+            - name: Set up Docker Buildx
+              if: steps.gate.outputs.enabled == 'true'
+              uses: docker/setup-buildx-action@v4
+
+            - name: Build image
+              if: steps.gate.outputs.enabled == 'true'
+              uses: docker/build-push-action@v7
+              with:
+                  context: .
+                  load: true
+                  tags: wyoming-pocket-tts:e2e
+                  cache-from: type=gha,scope=e2e
+                  cache-to: type=gha,scope=e2e,mode=max
+
+            # Cache the downloaded model + gated cloning weights across runs so
+            # only the first E2E pays the ~450MB download.
+            - name: Cache Hugging Face model
+              if: steps.gate.outputs.enabled == 'true'
+              uses: actions/cache@v6
+              with:
+                  path: hfcache
+                  key: hf-pocket-tts-english-v1
+
+            - name: Generate non-WAV custom voice sample
+              if: steps.gate.outputs.enabled == 'true'
+              run: |
+                  mkdir -p voices hfcache
+                  uv run python tests/e2e/make_sample.py voices/rocky.ogg
+
+            - name: Start server container
+              if: steps.gate.outputs.enabled == 'true'
+              env:
+                  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+              run: |
+                  docker run -d --name wpt -p 10200:10200 \
+                    -e VOICES=rocky \
+                    -e VOICES_DIR=/share/tts-voices \
+                    -e LANGUAGE=en \
+                    -e HF_TOKEN="$HF_TOKEN" \
+                    -v "$PWD/voices:/share/tts-voices" \
+                    -v "$PWD/hfcache:/root/.cache/huggingface" \
+                    wyoming-pocket-tts:e2e
+
+            - name: Wait for voice to load
+              if: steps.gate.outputs.enabled == 'true'
+              run: |
+                  # Fail immediately on the exact 1.4.4 regression signatures.
+                  for i in $(seq 1 150); do
+                      logs=$(docker logs wpt 2>&1)
+                      if echo "$logs" | grep -qE "soundfile is required|Failed to load custom voice rocky|could not be loaded"; then
+                          echo "::error::Custom voice failed to load — regression detected"
+                          echo "$logs" | tail -40
+                          exit 1
+                      fi
+                      if echo "$logs" | grep -q "Preloaded voice: rocky"; then
+                          echo "Custom voice 'rocky' preloaded successfully."
+                          exit 0
+                      fi
+                      if ! docker ps --format '{{.Names}}' | grep -q '^wpt$'; then
+                          echo "::error::Container exited unexpectedly"
+                          echo "$logs" | tail -60
+                          exit 1
+                      fi
+                      sleep 4
+                  done
+                  echo "::error::Timed out waiting for voice to load"
+                  docker logs wpt 2>&1 | tail -60
+                  exit 1
+
+            - name: Run synthesize E2E check
+              if: steps.gate.outputs.enabled == 'true'
+              run: |
+                  uv run python tests/e2e/synthesize_check.py \
+                    --host 127.0.0.1 --port 10200 --voice rocky
+
+            - name: Dump container logs on failure
+              if: failure() && steps.gate.outputs.enabled == 'true'
+              run: docker logs wpt 2>&1 | tail -80 || true
+
+            - name: Stop container
+              if: always() && steps.gate.outputs.enabled == 'true'
+              run: docker rm -f wpt || true
