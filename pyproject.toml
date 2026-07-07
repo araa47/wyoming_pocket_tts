@@ -1,6 +1,6 @@
 [project]
 name = "wyoming-pocket-tts"
-version = "1.4.6"
+version = "1.4.7"
 description = "Wyoming protocol server for Kyutai Pocket TTS with voice cloning"
 readme = "README.md"
 license = "MIT"
