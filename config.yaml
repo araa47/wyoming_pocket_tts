@@ -60,10 +60,6 @@ schema:
     hf_token: password?
     debug: bool
 
-# Environment
-environment:
-    HF_TOKEN: '{{ .hf_token }}'
-
 # Panel
 panel_icon: mdi:text-to-speech
 panel_title: Pocket TTS
