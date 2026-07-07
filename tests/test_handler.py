@@ -1,6 +1,7 @@
 """Tests for wyoming_pocket_tts handler."""
 
 import asyncio
+import struct
 import threading
 from types import SimpleNamespace
 from typing import cast
@@ -366,3 +367,19 @@ def test_cancel_mid_stream_closes_generator_before_lock_release():
         assert not handler_mod._generation_lock().locked()
 
     asyncio.run(scenario())
+
+
+def test_out_of_range_samples_are_clipped_not_wrapped():
+    class OvershootModel(_FakeModel):
+        def generate_audio_stream(self, voice_state, text, **kwargs):
+            self.stream_calls += 1
+            yield torch.tensor([1.5, -1.5, 0.5], dtype=torch.float32)
+
+    handler = _RecordingHandler(OvershootModel())
+    _run(handler.handle_event(Synthesize(text="loud").event()))
+
+    chunk_events = [e for e in handler.written if AudioChunk.is_type(e.type)]
+    samples = struct.unpack("<3h", AudioChunk.from_event(chunk_events[0]).audio)
+    assert samples[0] == 32767  # clipped, not wrapped negative
+    assert samples[1] == -32767  # clipped, not wrapped positive
+    assert samples[2] == 16383  # in-range samples unaffected
