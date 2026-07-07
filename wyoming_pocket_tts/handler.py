@@ -318,32 +318,6 @@ class PocketTTSEventHandler(AsyncEventHandler):
             return self.cli_args.voice
         return default_preset_for_language(self.cli_args.language)
 
-    async def _iter_audio_chunks(self, voice_state, text: str):
-        """Yield 16-bit PCM byte chunks from Pocket TTS as they are generated.
-
-        ``generate_audio_stream`` is a blocking generator, so each step is pumped
-        in a worker thread. That keeps the event loop free to write the previous
-        chunk to the socket while the next one is being decoded, and lets Home
-        Assistant start playback after the first chunk instead of waiting for the
-        whole clip.
-        """
-        stream = self.model.generate_audio_stream(voice_state, text)
-
-        def next_chunk_bytes() -> "bytes | None":
-            # Pull and convert one chunk; runs in a worker thread. Returns None
-            # when the generator is exhausted. chunk is a torch.Tensor of float
-            # samples in [-1, 1] -> 16-bit PCM bytes.
-            chunk = next(stream, None)
-            if chunk is None:
-                return None
-            return (chunk.numpy() * 32767).astype("int16").tobytes()
-
-        while True:
-            audio_bytes = await asyncio.to_thread(next_chunk_bytes)
-            if audio_bytes is None:
-                break
-            yield audio_bytes
-
     async def handle_event(self, event: Event) -> bool:
         """Handle Wyoming events."""
         if Describe.is_type(event.type):
@@ -411,29 +385,87 @@ class PocketTTSEventHandler(AsyncEventHandler):
             # while the rest is still being synthesized. Pocket TTS runs at ~real
             # time on CPU, so buffering the whole clip first delayed all audio by
             # its full duration and could trip HA's TTS timeout on long replies.
+            #
+            # The streaming loop is inlined here (rather than in a separate async
+            # generator) so that on early exit -- cancellation or a mid-stream
+            # error -- the worker thread's in-flight model step and the generator
+            # itself are cleaned up *before* the generation lock is released. An
+            # async generator's ``finally`` does not run synchronously on
+            # consumer cancellation (PEP 525 finalization is deferred to GC), so
+            # by the time it ran the lock would already be free and a second
+            # request could start using the shared model concurrently.
+            stream = self.model.generate_audio_stream(voice_state, text)
+
+            def next_chunk_bytes() -> "bytes | None":
+                # Pull and convert one chunk; runs in a worker thread. Returns
+                # None when the generator is exhausted. chunk is a torch.Tensor
+                # of float samples in [-1, 1] -> 16-bit PCM bytes.
+                chunk = next(stream, None)
+                if chunk is None:
+                    return None
+                return (chunk.numpy() * 32767).astype("int16").tobytes()
+
+            audio_started = False
             try:
                 async with _generation_lock():
-                    await self.write_event(
-                        AudioStart(
-                            rate=sample_rate, width=sample_width, channels=channels
-                        ).event()
-                    )
-                    chunk_count = 0
-                    async for audio_bytes in self._iter_audio_chunks(voice_state, text):
+                    pending: "asyncio.Task[bytes | None] | None" = None
+                    try:
                         await self.write_event(
-                            AudioChunk(
-                                audio=audio_bytes,
-                                rate=sample_rate,
-                                width=sample_width,
-                                channels=channels,
+                            AudioStart(
+                                rate=sample_rate, width=sample_width, channels=channels
                             ).event()
                         )
-                        chunk_count += 1
-                    await self.write_event(AudioStop().event())
-                _LOGGER.info("Streamed %d audio chunk(s)", chunk_count)
-
+                        audio_started = True
+                        chunk_count = 0
+                        while True:
+                            # Shielded so that if this handler is cancelled, the
+                            # task keeps running and we can still await its
+                            # completion in the finally below -- an un-shielded
+                            # cancelled future can never tell us when the worker
+                            # thread has actually left the model.
+                            pending = asyncio.ensure_future(
+                                asyncio.to_thread(next_chunk_bytes)
+                            )
+                            audio_bytes = await asyncio.shield(pending)
+                            pending = None
+                            if audio_bytes is None:
+                                break
+                            await self.write_event(
+                                AudioChunk(
+                                    audio=audio_bytes,
+                                    rate=sample_rate,
+                                    width=sample_width,
+                                    channels=channels,
+                                ).event()
+                            )
+                            chunk_count += 1
+                        await self.write_event(AudioStop().event())
+                        _LOGGER.info("Streamed %d audio chunk(s)", chunk_count)
+                    finally:
+                        # Must finish BEFORE the lock is released: a worker
+                        # thread may still be inside the model's generator.
+                        if pending is not None:
+                            await asyncio.shield(asyncio.wait({pending}))
+                            if (
+                                not pending.cancelled()
+                                and pending.exception() is not None
+                            ):
+                                _LOGGER.debug(
+                                    "Generator step failed during cleanup: %s",
+                                    pending.exception(),
+                                )
+                        await asyncio.shield(asyncio.to_thread(stream.close))
             except Exception as e:
                 _LOGGER.exception("Error generating audio: %s", e)
+                if audio_started:
+                    # Best-effort: complete the Wyoming audio framing so HA's
+                    # pipeline ends now instead of waiting for its TTS timeout.
+                    try:
+                        await self.write_event(AudioStop().event())
+                    except Exception:
+                        _LOGGER.debug(
+                            "Could not send AudioStop after error", exc_info=True
+                        )
 
         return True
 

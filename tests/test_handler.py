@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import cast
 
 import torch
+import wyoming_pocket_tts.handler as handler_mod
 from pocket_tts import TTSModel
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.info import Describe
@@ -304,3 +305,64 @@ def test_event_loop_stays_responsive_during_slow_voice_load():
         assert synth_task.result() is True
 
     _run(main())
+
+
+def test_error_mid_stream_still_sends_audio_stop():
+    """A generator that errors after yielding one chunk must still emit AudioStop."""
+
+    class ErroringModel(_FakeModel):
+        def generate_audio_stream(self, voice_state, text, **kwargs):
+            self.stream_calls += 1
+            yield torch.full((4,), 0.5, dtype=torch.float32)
+            raise RuntimeError("boom")
+
+    model = ErroringModel()
+    handler = _RecordingHandler(model)
+
+    result = _run(handler.handle_event(Synthesize(text="hello").event()))
+
+    assert result is True
+    assert model.stream_calls == 1
+    # AudioStart was written, then one AudioChunk, then AudioStop despite the error.
+    assert AudioStart.is_type(handler.written[0].type)
+    chunk_events = [e for e in handler.written if AudioChunk.is_type(e.type)]
+    assert len(chunk_events) == 1
+    assert AudioStop.is_type(handler.written[-1].type)
+
+
+def test_cancel_mid_stream_closes_generator_before_lock_release():
+    """On cancellation the generator is closed and the lock freed, in that order."""
+    handler_mod._GENERATION_LOCK = None  # fresh lock for this event loop
+
+    release = threading.Event()
+    closed = threading.Event()
+
+    class BlockingModel(_FakeModel):
+        def generate_audio_stream(self, voice_state, text, **kwargs):
+            self.stream_calls += 1
+            try:
+                yield torch.full((4,), 0.5, dtype=torch.float32)
+                release.wait(timeout=5)  # simulates a slow model step
+                yield torch.full((4,), 0.5, dtype=torch.float32)
+            finally:
+                closed.set()
+
+    async def scenario():
+        handler = _RecordingHandler(BlockingModel())
+        task = asyncio.create_task(
+            handler.handle_event(Synthesize(text="hello").event())
+        )
+        # Wait until streaming has started (AudioStart written).
+        while not handler.written:
+            await asyncio.sleep(0.01)
+        task.cancel()
+        release.set()  # let the in-flight model step finish
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        # Generator must be closed and the lock must be free once the task is done.
+        assert closed.is_set()
+        assert not handler_mod._generation_lock().locked()
+
+    asyncio.run(scenario())
