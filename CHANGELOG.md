@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.7] - 2026-07-07
+
+### Fixed
+- **On-demand voice loading no longer blocks the event loop** (#27). Custom and
+  preset voice loads now run in a worker thread via `asyncio.to_thread` while
+  holding the generation lock, so other Wyoming connections and the Docker
+  healthcheck `describe` probe stay responsive during slow loads or gated
+  Hugging Face weight downloads. Duplicate concurrent loads of the same voice
+  are deduped via a lock re-check.
+- **Client disconnect mid-synthesis no longer releases the generation lock while
+  the model is still generating** (#26). The streaming block was restructured so
+  the generator is closed and any in-flight worker thread is awaited (shielded)
+  *before* the lock is released, preventing concurrent use of the non-thread-safe
+  model. Errors after `AudioStart` now send a best-effort `AudioStop` so Home
+  Assistant's TTS pipeline ends promptly instead of waiting for its timeout.
+- **Out-of-range PCM samples are now clipped, not wrapped** (#28). Neural TTS
+  output can overshoot `[-1, 1]`; the previous float→int16 conversion wrapped
+  those samples to the opposite extreme, producing full-scale clicks/pops. The
+  tensor is now clamped before conversion.
+- **Removed the bogus `environment: HF_TOKEN: {{ .hf_token }}` block from
+  `config.yaml`** (#29). The Home Assistant Supervisor does not template
+  `environment` values, so this exported a literal string (breaking anonymous
+  Hugging Face downloads with spurious 401s) instead of the token. The token
+  still flows through `run.sh`, which remains the single path.
+
 ## [1.4.6] - 2026-07-06
 
 ### Changed
