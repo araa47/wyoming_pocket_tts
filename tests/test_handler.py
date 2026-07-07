@@ -1,12 +1,14 @@
 """Tests for wyoming_pocket_tts handler."""
 
 import asyncio
+import threading
 from types import SimpleNamespace
 from typing import cast
 
 import torch
 from pocket_tts import TTSModel
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
+from wyoming.info import Describe
 from wyoming.tts import Synthesize, SynthesizeVoice
 from wyoming_pocket_tts.handler import (
     PRESET_VOICES,
@@ -198,3 +200,107 @@ def test_custom_default_falls_back_to_language_preset_when_unavailable():
 
     assert result is True
     assert model.stream_calls == 1
+
+
+def test_on_demand_load_succeeds_and_is_cached():
+    """A voice not in voice_states is loaded on-demand and cached after."""
+
+    class OnDemandModel(_FakeModel):
+        def __init__(self):
+            super().__init__()
+            self.load_calls: list[str] = []
+
+        def get_state_for_audio_prompt(self, audio_conditioning):
+            self.load_calls.append(audio_conditioning)
+            return object()
+
+    model = cast(TTSModel, OnDemandModel())
+    handler = _RecordingHandler(model)
+    handler.voice_states = {}  # nothing preloaded -> forces on-demand load
+
+    result = _run(
+        handler.handle_event(
+            Synthesize(text="hi", voice=SynthesizeVoice(name="alba")).event()
+        )
+    )
+
+    assert result is True
+    assert model.stream_calls == 1
+    assert "alba" in handler.voice_states
+    assert model.load_calls == ["alba"]
+
+
+def test_preloaded_voice_never_triggers_load():
+    """A voice already in voice_states must not invoke the model loader."""
+
+    class FailOnLoadModel(_FakeModel):
+        def get_state_for_audio_prompt(self, audio_conditioning):
+            raise AssertionError("preloaded voice should not trigger a load")
+
+    model = cast(TTSModel, FailOnLoadModel())
+    handler = _RecordingHandler(model)
+    # _RecordingHandler preloads {"alba": object()} by default; keep it.
+
+    result = _run(
+        handler.handle_event(
+            Synthesize(text="hi", voice=SynthesizeVoice(name="alba")).event()
+        )
+    )
+
+    assert result is True
+    assert model.stream_calls == 1
+
+
+def test_event_loop_stays_responsive_during_slow_voice_load():
+    """The key regression test: a slow on-demand load must not freeze the loop.
+
+    Before the fix, ``_load_voice`` ran synchronously on the event loop, so a
+    second connection's ``describe`` probe (used by the Docker healthcheck)
+    would stall for the whole load. With ``asyncio.to_thread``, the load runs in
+    a worker thread and the loop is free to answer ``describe`` immediately.
+    """
+    load_started = threading.Event()
+    load_done = threading.Event()
+
+    class SlowLoadingModel(_FakeModel):
+        def get_state_for_audio_prompt(self, audio_conditioning):
+            load_started.set()
+            # Block in the worker thread until the test releases us.
+            load_done.wait(timeout=5.0)
+            return object()
+
+    model = cast(TTSModel, SlowLoadingModel())
+
+    # Synthesizing handler: nothing preloaded so it triggers the slow load.
+    synth_handler = _RecordingHandler(model)
+    synth_handler.voice_states = {}
+
+    # Second handler answering describe; preloaded so it needs no load.
+    describe_handler = _RecordingHandler(model)
+
+    async def main():
+        synth_task = asyncio.create_task(
+            synth_handler.handle_event(
+                Synthesize(text="hi", voice=SynthesizeVoice(name="alba")).event()
+            )
+        )
+
+        # Wait until the worker thread has entered the blocking load.
+        await asyncio.to_thread(load_started.wait, 2.0)
+        assert load_started.is_set(), "slow load did not start in time"
+
+        # While the load is in progress, describe on the second handler must
+        # complete promptly — this is the regression being tested.
+        describe_task = asyncio.create_task(
+            describe_handler.handle_event(Describe().event())
+        )
+        try:
+            await asyncio.wait_for(describe_task, timeout=0.5)
+        finally:
+            load_done.set()  # release the worker thread
+
+        assert describe_task.result() is True
+        await synth_task
+        assert synth_task.result() is True
+
+    _run(main())

@@ -280,6 +280,30 @@ class PocketTTSEventHandler(AsyncEventHandler):
         """Load a voice (preset or custom) on-demand."""
         return load_voice(self.model, voice_name, self.cli_args.voices_dir)
 
+    async def _get_or_load_voice(self, voice_name: str):
+        """Return a cached voice state, loading it in a worker thread if needed.
+
+        The generation lock is held while loading because
+        ``get_state_for_audio_prompt`` runs the model, which is not safe for
+        concurrent use with generation on another connection. Holding the lock
+        also serializes duplicate concurrent loads of the same voice; the
+        re-check after acquiring lets the second request reuse the first one's
+        result. The lock is released before ``handle_event`` later acquires it
+        again for generation, so there is no deadlock.
+        """
+        voice_state = self.voice_states.get(voice_name)
+        if voice_state is not None:
+            return voice_state
+        async with _generation_lock():
+            # Re-check: another request may have loaded it while we waited.
+            voice_state = self.voice_states.get(voice_name)
+            if voice_state is None:
+                _LOGGER.info("Loading voice on-demand: %s", voice_name)
+                voice_state = await asyncio.to_thread(self._load_voice, voice_name)
+                if voice_state is not None:
+                    self.voice_states[voice_name] = voice_state
+        return voice_state
+
     def _resolve_voice_name(self, synthesize: Synthesize) -> str:
         voice_name = self.cli_args.voice
         if synthesize.voice and synthesize.voice.name:
@@ -343,27 +367,22 @@ class PocketTTSEventHandler(AsyncEventHandler):
                 self.cli_args.language,
             )
 
-            # Get voice state (preset or custom), loading on-demand if not preloaded.
-            voice_state = self.voice_states.get(voice_name)
+            # Get voice state (preset or custom), loading on-demand if not
+            # preloaded. The load runs in a worker thread so the event loop
+            # stays free to serve other connections (including the Docker
+            # healthcheck's describe probe) while a slow custom-voice load or
+            # gated HF weights download is in progress.
+            voice_state = await self._get_or_load_voice(voice_name)
             if voice_state is None:
-                _LOGGER.info("Loading voice on-demand: %s", voice_name)
-                voice_state = self._load_voice(voice_name)
-                if voice_state is not None:
-                    self.voice_states[voice_name] = voice_state
-                else:
-                    fallback_voice = self._fallback_voice_name()
-                    if voice_name != fallback_voice:
-                        _LOGGER.warning(
-                            "Voice '%s' not found or unavailable, using fallback preset: %s",
-                            voice_name,
-                            fallback_voice,
-                        )
-                        voice_name = fallback_voice
-                        voice_state = self.voice_states.get(voice_name)
-                        if voice_state is None:
-                            voice_state = self._load_voice(voice_name)
-                            if voice_state is not None:
-                                self.voice_states[voice_name] = voice_state
+                fallback_voice = self._fallback_voice_name()
+                if voice_name != fallback_voice:
+                    _LOGGER.warning(
+                        "Voice '%s' not found or unavailable, using fallback preset: %s",
+                        voice_name,
+                        fallback_voice,
+                    )
+                    voice_name = fallback_voice
+                    voice_state = await self._get_or_load_voice(voice_name)
 
             if voice_state is None:
                 _LOGGER.error(
