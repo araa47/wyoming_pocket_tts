@@ -50,7 +50,6 @@ else
         LEGACY_PRELOAD="${LEGACY_PRELOAD:-}"
     fi
 fi
-fi
 
 # Export HuggingFace token if provided
 if [ -n "$HF_TOKEN" ] && [ "$HF_TOKEN" != "null" ]; then

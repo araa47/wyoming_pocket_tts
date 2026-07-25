@@ -1,0 +1,87 @@
+# Wyoming Pocket TTS Docker image - CUDA variant
+# Uses multi-stage build; requires NVIDIA Container Toolkit at runtime
+# Run with: docker run --gpus all -e DEVICE=cuda ...
+
+# ============================================
+# BUILDER STAGE - Install dependencies with uv
+# ============================================
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+WORKDIR /app
+
+ENV UV_SYSTEM_PYTHON=1 \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
+
+# Install CUDA-enabled PyTorch (cu126 index)
+COPY pyproject.toml .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install "torch==2.12.0" --index-url https://download.pytorch.org/whl/cu126 && \
+    uv pip install -r pyproject.toml
+
+COPY wyoming_pocket_tts/ wyoming_pocket_tts/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-deps .
+
+# Clean up unneeded packages — keep torch/_inductor, torch/share, caffe2 (needed for CUDA ops)
+RUN rm -rf /usr/local/lib/python3.13/site-packages/sympy \
+           /usr/local/lib/python3.13/site-packages/sympy-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/networkx \
+           /usr/local/lib/python3.13/site-packages/networkx-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/pygments \
+           /usr/local/lib/python3.13/site-packages/Pygments-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/pip \
+           /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
+           /usr/local/lib/python3.13/site-packages/setuptools \
+           /usr/local/lib/python3.13/site-packages/setuptools-*.dist-info \
+    && find /usr/local/lib/python3.13/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type d -name "test" -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.pyi" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.pyx" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.c" -delete 2>/dev/null || true \
+    && find /usr/local/lib/python3.13/site-packages -type f -name "*.h" -delete 2>/dev/null || true
+
+# ============================================
+# RUNTIME STAGE - NVIDIA CUDA runtime image
+# ============================================
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install Python 3.13 + minimal runtime deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.13 \
+    python3.13-venv \
+    netcat-openbsd \
+    jq \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/cache/apt/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.13 1
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin/wyoming-pocket-tts /usr/local/bin/
+
+ENV PYTHONPATH=/usr/local/lib/python3.13/site-packages
+
+WORKDIR /app
+
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+RUN mkdir -p /share/tts-voices
+
+EXPOSE 10200
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
+    CMD echo '{"type":"describe"}' | nc -w 5 localhost 10200 | grep -q "pocket-tts" || exit 1
+
+CMD ["/run.sh"]
