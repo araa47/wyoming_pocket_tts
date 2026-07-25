@@ -81,6 +81,7 @@ uv run python -m wyoming_pocket_tts --voices alba --debug
 | `language` | `en` | TTS language/model, selected from a dropdown |
 | `voices` | `[alba]` | Voices to load. Each is **preloaded** (fast first response) and is the **only** set advertised to Home Assistant. Type a preset name or a custom sample's filename without extension (e.g. `rocky`). Leave empty to advertise every built-in + custom voice, loaded on demand |
 | `voices_dir` | `/share/tts-voices` | Directory for custom voice samples |
+| `device` | `cpu` | Inference device (`cpu` or `cuda`). Use `cuda` for GPU acceleration |
 | `hf_token` | — | HuggingFace token (custom/cloned voices only) |
 | `debug` | `false` | Enable debug logging |
 
