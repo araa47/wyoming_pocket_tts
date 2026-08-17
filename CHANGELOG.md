@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.8] - 2026-08-18
+
+### Added
+- **GPU acceleration via CUDA** (#36, thanks [@contagon](https://github.com/contagon)!).
+  A new `device` option (`cpu`, the default, or `cuda`) moves model inference onto
+  an NVIDIA GPU — roughly 3-5x realtime on CPU becomes 10-12x on GPU. A
+  `Dockerfile.cuda` variant (built on the NVIDIA CUDA runtime image) supports
+  standalone GPU Docker deployments via the NVIDIA Container Toolkit
+  (`docker run --gpus all -e DEVICE=cuda`); the add-on and ghcr.io images remain
+  CPU-only. Generated PCM chunks are moved off the GPU with `.cpu()` before the
+  int16 conversion.
+- **`.safetensors` is now an accepted custom voice file type** (#35, also
+  @contagon), alongside `.wav`/`.mp3`/`.ogg`/`.flac`/`.m4a`.
+
 ## [1.4.7] - 2026-07-07
 
 ### Fixed

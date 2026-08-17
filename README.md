@@ -14,14 +14,14 @@
 </p>
 
 <p align="center">
-  A <a href="https://github.com/rhasspy/wyoming">Wyoming protocol</a> server for <a href="https://kyutai.org/tts">Kyutai Pocket TTS</a> — ~10x realtime on CPU, no cloud, no GPU.
+  A <a href="https://github.com/rhasspy/wyoming">Wyoming protocol</a> server for <a href="https://kyutai.org/tts">Kyutai Pocket TTS</a> — ~10x realtime on CPU, even faster with an optional NVIDIA GPU. No cloud.
 </p>
 
 ---
 
 ## Features
 
-- **Fast** — ~10x realtime on CPU, no GPU required
+- **Fast** — ~10x realtime on CPU, no GPU required; ~10-12x realtime with an optional NVIDIA GPU
 - **Voice Cloning** — clone any voice from 15-30 seconds of audio
 - **Multi-language** — English, French, German, Portuguese, Italian, and Spanish
 - **Local** — 100% on-device, no cloud dependency
@@ -89,6 +89,34 @@ uv run python -m wyoming_pocket_tts --voices alba --debug
 > `hf_token`, set `voices` to `rocky`, pick the matching `language`, restart, then
 > reload the Wyoming integration. Only `rocky` will be offered to Home Assistant.
 
+## GPU Acceleration
+
+CPU is the default and needs no setup. To run inference on an NVIDIA GPU
+(~10-12x realtime vs ~3-5x on CPU), set `device` to `cuda` — or pass
+`--device cuda` when running locally with a CUDA-enabled PyTorch build.
+
+For Docker, use the CUDA variant image (requires the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)):
+
+```bash
+# Build the CUDA image from this repository (not published to ghcr.io)
+docker build -f Dockerfile.cuda -t pocket-tts-cuda .
+
+docker run -d \
+  --name pocket-tts \
+  --gpus all \
+  -p 10200:10200 \
+  -e DEVICE=cuda \
+  -v pocket-tts-voices:/share/tts-voices \
+  pocket-tts-cuda
+
+# For voice cloning, add your HuggingFace token:
+# -e HF_TOKEN=your_token_here
+```
+
+> **Note:** the Home Assistant add-on ships the CPU image. `cuda` requires a
+> custom Docker deployment as above.
+
 ## Voices
 
 ### Built-in Voices
@@ -108,7 +136,7 @@ uv run python -m wyoming_pocket_tts --voices alba --debug
 
 1. Create `/share/tts-voices/` in Home Assistant if it does not exist
 2. Record 5-30 seconds of clear speech; 15-30 seconds works best
-3. Save it as `.ogg`, `.wav`, `.mp3`, `.flac`, or `.m4a`, for example `/share/tts-voices/rocky.ogg`
+3. Save it as `.ogg`, `.wav`, `.mp3`, `.flac`, `.m4a`, or `.safetensors`, for example `/share/tts-voices/rocky.ogg`
 4. Add your Hugging Face read token to `hf_token`
 5. Restart the add-on
 6. Reload the Wyoming integration in Home Assistant:
@@ -201,6 +229,12 @@ Home Assistant caches the voice list. After adding a new voice:
 Each voice loads on first use (~2s). Add voice names to `preload_voices` (one per line in the add-on UI) for instant first responses without loading every voice into RAM.
 
 </details>
+
+## Acknowledgements
+
+- [Easton Potokar (@contagon)](https://github.com/contagon) — GPU/CUDA support ([#36](https://github.com/araa47/wyoming_pocket_tts/pull/36)) and safetensors voice samples ([#35](https://github.com/araa47/wyoming_pocket_tts/pull/35))
+- [Kyutai](https://kyutai.org/) — the Pocket TTS model
+- The [Wyoming](https://github.com/rhasspy/wyoming) / [Home Assistant](https://www.home-assistant.io) ecosystem
 
 ## License
 
