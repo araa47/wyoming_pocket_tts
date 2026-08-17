@@ -119,7 +119,7 @@ def default_preset_for_language(language: "str | None") -> str:
 
 
 # Audio formats accepted for custom voice samples in the voices directory.
-AUDIO_EXTENSIONS = {".wav", ".mp3", ".ogg", ".flac", ".m4a"}
+AUDIO_EXTENSIONS = {".wav", ".mp3", ".ogg", ".flac", ".m4a", ".safetensors"}
 
 SUPPORTED_LANGUAGES: dict[str, str] = {
     "en": "english",
