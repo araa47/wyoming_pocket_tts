@@ -404,7 +404,7 @@ class PocketTTSEventHandler(AsyncEventHandler):
                 if chunk is None:
                     return None
                 return (
-                    (chunk.clamp(-1.0, 1.0).numpy() * 32767).astype("int16").tobytes()
+                    (chunk.clamp(-1.0, 1.0).cpu().numpy() * 32767).astype("int16").tobytes()
                 )
 
             audio_started = False

@@ -77,6 +77,12 @@ async def main() -> None:
         ),
     )
     parser.add_argument(
+        "--device",
+        default="cpu",
+        choices=["cpu", "cuda"],
+        help="Device to run inference on (default: cpu)",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging",
@@ -106,8 +112,12 @@ async def main() -> None:
     _LOGGER.info("Loading Pocket TTS model for language: %s", args.language)
 
     # Load model
-    model = TTSModel.load_model(language=args.language)
-    _LOGGER.info("Model loaded successfully (sample rate: %d Hz)", model.sample_rate)
+    model = TTSModel.load_model(language=args.language).to(args.device)
+    _LOGGER.info(
+        "Model loaded successfully (sample rate: %d Hz, device: %s)",
+        model.sample_rate,
+        args.device,
+    )
 
     # Discover custom voices present in the voices directory (names only, no load).
     custom_voice_names = list_custom_voice_names(args.voices_dir)

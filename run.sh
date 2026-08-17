@@ -23,6 +23,7 @@ if command -v bashio &> /dev/null; then
     VOICES_DIR=$(bashio::config 'voices_dir')
     DEBUG=$(bashio::config 'debug')
     HF_TOKEN=$(bashio::config 'hf_token')
+    DEVICE=$(bashio::config 'device')
     VOICES=$(read_voices)
     LEGACY_VOICE=$(jq -r '.voice // ""' "$CONFIG_PATH" 2>/dev/null)
     LEGACY_PRELOAD=$(read_preload)
@@ -33,8 +34,9 @@ else
         VOICES_DIR=$(jq -r '.voices_dir // "/share/tts-voices"' "$CONFIG_PATH")
         DEBUG=$(jq -r '.debug // false' "$CONFIG_PATH")
         HF_TOKEN=$(jq -r '.hf_token // ""' "$CONFIG_PATH")
+        DEVICE=$(jq -r '.device // "cpu"' "$CONFIG_PATH")
         VOICES=$(read_voices)
-        LEGACY_VOICE=$(jq -r '.voice // ""' "$CONFIG_PATH")
+        LEGACY_VOICE=$(jq -r '.voice // ""' "$CONFIG_PATH" 2>/dev/null)
         LEGACY_PRELOAD=$(read_preload)
     else
         # Defaults for standalone usage
@@ -42,6 +44,7 @@ else
         VOICES_DIR="${VOICES_DIR:-/share/tts-voices}"
         DEBUG="${DEBUG:-false}"
         HF_TOKEN="${HF_TOKEN:-}"
+        DEVICE="${DEVICE:-cpu}"
         VOICES="${VOICES:-alba}"
         LEGACY_VOICE="${LEGACY_VOICE:-}"
         LEGACY_PRELOAD="${LEGACY_PRELOAD:-}"
@@ -63,6 +66,7 @@ ARGS=(
     --port "10200"
     --language "$LANGUAGE"
     --voices-dir "$VOICES_DIR"
+    --device "$DEVICE"
 )
 
 [ "$VOICES" = "null" ] && VOICES=""
@@ -85,6 +89,7 @@ echo "========================================"
 echo "Wyoming Pocket TTS Server"
 echo "========================================"
 echo "Language: $LANGUAGE"
+echo "Device: $DEVICE"
 echo "Voices: ${VOICES:-<all built-in + custom (on demand)>}"
 echo "Voices dir: $VOICES_DIR"
 echo "Debug: $DEBUG"

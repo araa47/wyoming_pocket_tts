@@ -49,6 +49,7 @@ options:
     voices:
         - alba
     voices_dir: /share/tts-voices
+    device: cpu
     hf_token: ''
     debug: false
 
@@ -57,6 +58,7 @@ schema:
     voices:
         - str
     voices_dir: str
+    device: list(cpu|cuda)
     hf_token: password?
     debug: bool
 
