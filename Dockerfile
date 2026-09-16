@@ -34,10 +34,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps .
 
 # Clean up: remove unneeded runtime packages and files in a single layer
-# KEEP sympy: pocket_tts imports it at import time via the module-level
+# KEEP torch/_inductor: pocket_tts imports it at import time via the module-level
 # @torch.compiler.disable decorator -> torch._dynamo ->
-# torch.fx.experimental.symbolic_shapes -> "import sympy". Removing it breaks
-# startup. networkx, pygments, pip, setuptools are still unneeded.
+# torch._dynamo.trace_rules -> "import torch._inductor" and
+# "from torch._inductor import test_operators" (test_operators.py). Removing
+# _inductor or its .py files breaks startup with ModuleNotFoundError.
+# networkx, pygments, pip, setuptools are still unneeded.
 RUN rm -rf /usr/local/lib/python3.13/site-packages/networkx \
            /usr/local/lib/python3.13/site-packages/networkx-*.dist-info \
            /usr/local/lib/python3.13/site-packages/pygments \
@@ -48,7 +50,6 @@ RUN rm -rf /usr/local/lib/python3.13/site-packages/networkx \
            /usr/local/lib/python3.13/site-packages/setuptools-*.dist-info \
            /usr/local/lib/python3.13/site-packages/torch/include \
            /usr/local/lib/python3.13/site-packages/torch/share \
-           /usr/local/lib/python3.13/site-packages/torch/_inductor \
            /usr/local/lib/python3.13/site-packages/caffe2 \
     && find /usr/local/lib/python3.13/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true \
     && find /usr/local/lib/python3.13/site-packages -type d -name "test" -exec rm -rf {} + 2>/dev/null || true \
