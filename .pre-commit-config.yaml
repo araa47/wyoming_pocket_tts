@@ -5,7 +5,7 @@ default_stages: [pre-commit, pre-push]
 repos:
     - repo: https://github.com/astral-sh/uv-pre-commit
       # uv version.
-      rev: 0.10.7
+      rev: 0.13.6
       hooks:
           - id: uv-lock
     - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -30,13 +30,13 @@ repos:
       hooks:
           - id: yamlfmt
     - repo: https://github.com/psf/black
-      rev: 26.5.1
+      rev: 26.10.1
       hooks:
           - id: black
             language_version: python3
             args: [-t, py311]
     - repo: https://github.com/pycqa/isort
-      rev: 8.0.1
+      rev: 9.0.2
       hooks:
           - id: isort
             name: isort (python)
@@ -48,7 +48,7 @@ repos:
             language: system
             types: [python]
     - repo: https://github.com/codespell-project/codespell
-      rev: v2.4.2
+      rev: v2.4.3
       hooks:
           - id: codespell
             name: codespell
@@ -58,7 +58,7 @@ repos:
             types: [text]
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.15.20
+      rev: v0.17.3
       hooks:
           - id: ruff-check
             args: [--fix, --exit-non-zero-on-fix]

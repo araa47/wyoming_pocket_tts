@@ -31,7 +31,7 @@ jobs:
 
             - name: Install uv
               if: steps.gate.outputs.enabled == 'true'
-              uses: astral-sh/setup-uv@v8.3.0
+              uses: astral-sh/setup-uv@v10.3.3
               with:
                   enable-cache: true
                   cache-dependency-glob: uv.lock
