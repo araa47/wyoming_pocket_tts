@@ -27,12 +27,9 @@ COPY wyoming_pocket_tts/ wyoming_pocket_tts/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps .
 
-# Clean up unneeded packages — keep torch/_inductor, torch/share, caffe2 (needed for CUDA ops)
-RUN rm -rf /usr/local/lib/python3.13/site-packages/sympy \
-           /usr/local/lib/python3.13/site-packages/sympy-*.dist-info \
-           /usr/local/lib/python3.13/site-packages/networkx \
-           /usr/local/lib/python3.13/site-packages/networkx-*.dist-info \
-           /usr/local/lib/python3.13/site-packages/pygments \
+# Clean up development-only packages. PyTorch's torch.compiler.disable imports
+# torch._dynamo, which requires sympy and networkx at runtime.
+RUN rm -rf /usr/local/lib/python3.13/site-packages/pygments \
            /usr/local/lib/python3.13/site-packages/Pygments-*.dist-info \
            /usr/local/lib/python3.13/site-packages/pip \
            /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
@@ -44,6 +41,9 @@ RUN rm -rf /usr/local/lib/python3.13/site-packages/sympy \
     && find /usr/local/lib/python3.13/site-packages -type f -name "*.pyx" -delete 2>/dev/null || true \
     && find /usr/local/lib/python3.13/site-packages -type f -name "*.c" -delete 2>/dev/null || true \
     && find /usr/local/lib/python3.13/site-packages -type f -name "*.h" -delete 2>/dev/null || true
+
+# Catch missing PyTorch compiler dependencies during the image build.
+RUN python -c "import pocket_tts"
 
 # ============================================
 # RUNTIME STAGE - NVIDIA CUDA runtime image

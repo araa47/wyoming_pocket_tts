@@ -12,6 +12,11 @@ All notable changes to this project will be documented in this file.
   1.10.2, `torch` 2.12 → 2.15.0 in the CPU image (2.14.1 in the CUDA image,
   the newest on the cu126 index), `ruff`, `ty`, `prek` and `pytest`.
   `pip-audit` reports no known vulnerabilities in the resolved environment.
+- **Docker images keep the PyTorch compiler runtime dependencies.** pocket-tts 4
+  imports `torch._dynamo` at import time, which needs `sympy`, `networkx` (and
+  `torch._inductor` in the CPU image); the image cleanup no longer deletes them
+  and a build-time `import pocket_tts` check fails the build if anything needed
+  is missing. Same change as #41 (fixes #39), required by the pocket-tts bump.
 - CI: `astral-sh/setup-uv` v8 → v10; pre-commit hook revisions refreshed.
 
 ## [1.4.8] - 2026-08-18
