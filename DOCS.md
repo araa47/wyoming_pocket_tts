@@ -163,6 +163,13 @@ Wyoming integration shows "unable to connect" (entity `unavailable`), reload it:
 ⋮ → Reload**. (Older versions bound IPv4 only and could be unreachable on
 dual-stack networks; this is fixed in 1.4.2+.)
 
+If it stays unavailable after a reload, check the host the entry points at.
+Versions 1.4.3-1.4.9 advertised the add-on's container **IP address**, which
+changes when the add-on or host restarts, and Home Assistant never updates a
+discovered entry. Delete the Pocket TTS entry and accept the re-discovered one
+(1.4.10+ advertises the stable hostname), or add it manually with the hostname
+from the add-on's **Info** tab (`xxxxxxxx-wyoming-pocket-tts`) and port `10200`.
+
 ### Custom voice not appearing in dropdown
 
 Home Assistant caches the voice list. After adding a new voice:

@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.10] - 2026-11-08
+
+### Fixed
+- **Wyoming integration randomly goes "Unable to connect" and only comes back
+  after deleting and re-adding it** (#38). Since 1.4.3 the add-on advertised its
+  container **IPv4 address** in Supervisor discovery. Home Assistant stores the
+  discovered host in the Wyoming config entry and never updates it on
+  rediscovery, but Docker hands out hassio-network IPs lowest-free at container
+  start, so the add-on's IP changes whenever containers start in a different
+  order (host reboot, HA/add-on updates, restarts). The stored IP then pointed
+  at nothing, or at another add-on, and restarting Pocket TTS could not fix it.
+  Discovery now advertises the stable add-on **hostname**, the same as the
+  official Wyoming add-ons. The server has bound both IPv4 and IPv6 since
+  1.4.2, so either address the hostname resolves to answers.
+  - **Migration (one-time):** a Pocket TTS Wyoming entry added by discovery on
+    1.4.3-1.4.9 still holds the old IP, and Home Assistant will not rewrite it.
+    If it is unavailable, delete it under **Settings → Devices & Services →
+    Wyoming Protocol** and accept the re-discovered "Wyoming Pocket TTS" (or add
+    it manually with host `xxxxxxxx-wyoming-pocket-tts`, port `10200`). New
+    entries store the hostname and survive IP changes.
+
 ## [1.4.9] - 2026-11-08
 
 ### Changed
