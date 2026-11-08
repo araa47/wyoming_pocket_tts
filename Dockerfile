@@ -25,7 +25,7 @@ ENV UV_SYSTEM_PYTHON=1 \
 # Keep the torch pin in sync with uv.lock so images are reproducible.
 COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install "torch==2.12.0" --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install "torch==2.15.0" --index-url https://download.pytorch.org/whl/cpu && \
     uv pip install -r pyproject.toml
 
 # Copy project source and install (non-editable for smaller image)

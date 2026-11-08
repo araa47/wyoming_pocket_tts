@@ -15,10 +15,12 @@ ENV UV_SYSTEM_PYTHON=1 \
     UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
-# Install CUDA-enabled PyTorch (cu126 index)
+# Install CUDA-enabled PyTorch (cu126 index). 2.14.1 is the newest torch the
+# cu126 index publishes (no 2.15 wheels there), so this stays one
+# minor behind the CPU image until the base image moves to a newer CUDA.
 COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install "torch==2.12.0" --index-url https://download.pytorch.org/whl/cu126 && \
+    uv pip install "torch==2.14.1" --index-url https://download.pytorch.org/whl/cu126 && \
     uv pip install -r pyproject.toml
 
 COPY wyoming_pocket_tts/ wyoming_pocket_tts/

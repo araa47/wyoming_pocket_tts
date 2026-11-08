@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.9] - 2026-11-08
+
+### Changed
+- **Dependency and security refresh.** Every dependency moved to its latest
+  release, including the major bump of `pocket-tts` 2.1.0 → 4.0.1 (the
+  server's model-loading, voice-state and streaming calls are unchanged and
+  verified with a real synthesis run). Other notable bumps: `wyoming` 1.9.0 →
+  1.10.2, `torch` 2.12 → 2.15.0 in the CPU image (2.14.1 in the CUDA image,
+  the newest on the cu126 index), `ruff`, `ty`, `prek` and `pytest`.
+  `pip-audit` reports no known vulnerabilities in the resolved environment.
+- CI: `astral-sh/setup-uv` v8 → v10; pre-commit hook revisions refreshed.
+
 ## [1.4.8] - 2026-08-18
 
 ### Added
