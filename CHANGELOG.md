@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.11] - 2026-11-08
+
+### Security
+- **Fix the last vulnerable `filelock` in the lockfile.** `uv.lock` still pinned
+  `filelock` 4.1.0 (17 GHSA advisories, fixed in 4.2.1) on its Python 3.10
+  resolution branch, because every `filelock` release from 4.1.1 on requires
+  Python 3.11+. The project now requires Python 3.11+ (`requires-python`),
+  which removes that branch; the Docker images already run Python 3.13, so the
+  add-on itself is unaffected. `osv-scanner` reports no known vulnerabilities.
+
+### Changed
+- Refreshed the remaining lockfile dependencies (`torch` 2.15.0, `numpy`,
+  `scipy`, `httpx2`, `starlette`, `python-multipart`, `coverage`, CUDA runtime
+  libraries, etc.). No code changes.
+
 ## [1.4.10] - 2026-11-08
 
 ### Fixed
